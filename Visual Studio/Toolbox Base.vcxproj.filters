@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Core">
+      <UniqueIdentifier>{0025e205-4537-438f-b67e-2b4d81d0e937}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Environment">
+      <UniqueIdentifier>{0e78f575-9818-4865-af2d-b84b691d3f16}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Messages">
+      <UniqueIdentifier>{b7763f9c-4b40-4faa-97ac-aae130040de3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utility">
+      <UniqueIdentifier>{03a51a99-59af-47de-97c9-68f163be14f6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="../Pubc/Base Environment.cpp">
+      <Filter>Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Base Environment.h">
+      <Filter>Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Base LogMan.cpp">
+      <Filter>Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Base LogMan.h">
+      <Filter>Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Base Messages.h">
+      <Filter>Messages</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Base Messages.cpp">
+      <Filter>Messages</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Base SocketMan.cpp">
+      <Filter>Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Base SocketMan.h">
+      <Filter>Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Environment Bootstrap.cpp">
+      <Filter>Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Environment Bootstrap.h">
+      <Filter>Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Interface Environment.cpp">
+      <Filter>Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Interface Environment.h">
+      <Filter>Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Interface LogMan.h">
+      <Filter>Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Interface Messages.h">
+      <Filter>Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Interface SocketMan.h">
+      <Filter>Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Message Relay.cpp">
+      <Filter>Messages</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Message Relay.h">
+      <Filter>Messages</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Repo.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="../Pubc/Repo.h">
+      <Filter>Core</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
