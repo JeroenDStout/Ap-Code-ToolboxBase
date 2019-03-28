@@ -1,7 +1,7 @@
 #include "BlackRoot\Pubc\Threaded IO Stream.h"
 
-#include "Toolbox\Pubc\Base Messages.h"
-#include "Toolbox\Pubc\Environment Bootstrap.h"
+#include "ToolboxBase/Pubc\Base Messages.h"
+#include "ToolboxBase/Pubc\Environment Bootstrap.h"
 
 using namespace Toolbox::Util;
 

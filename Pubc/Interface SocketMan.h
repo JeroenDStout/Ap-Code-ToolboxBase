@@ -1,7 +1,7 @@
 #pragma once
 
 #include "BlackRoot\Pubc\JSON.h"
-#include "Toolbox\Pubc\Interface Messages.h"
+#include "ToolboxBase/Pubc\Interface Messages.h"
 
 namespace Toolbox {
 namespace Core {

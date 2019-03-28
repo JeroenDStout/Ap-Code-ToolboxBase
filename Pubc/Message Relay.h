@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Toolbox/Interface Messages.h"
+#include "ToolboxBase/Pubc/Interface Messages.h"
 
 namespace Toolbox {
 namespace Messaging {

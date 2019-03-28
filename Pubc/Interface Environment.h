@@ -3,8 +3,8 @@
 /* © Stout Games 2018
  */
 
-#include "BlackRoot/JSON.h"
-#include "Toolbox\Pubc\Interface Messages.h"
+#include "BlackRoot/Pubc/JSON.h"
+#include "ToolboxBase/Pubc\Interface Messages.h"
 
 namespace Toolbox {
 namespace Core {

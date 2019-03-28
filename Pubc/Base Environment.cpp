@@ -2,9 +2,9 @@
 
 #include "BlackRoot\Pubc\Threaded IO Stream.h"
 
-#include "Toolbox/Base Environment.h"
-#include "Toolbox/Base LogMan.h"
-#include "Toolbox/Base SocketMan.h"
+#include "ToolboxBase/Pubc/Base Environment.h"
+#include "ToolboxBase/Pubc/Base LogMan.h"
+#include "ToolboxBase/Pubc/Base SocketMan.h"
 
 using namespace Toolbox::Base;
 

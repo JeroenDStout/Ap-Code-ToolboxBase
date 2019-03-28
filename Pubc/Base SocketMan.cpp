@@ -7,11 +7,11 @@
 
 #include <set>
 
-#include "BlackRoot/Threaded IO Stream.h"
+#include "BlackRoot/Pubc/Threaded IO Stream.h"
 
-#include "Toolbox/Base Environment.h"
-#include "Toolbox/Base SocketMan.h"
-#include "Toolbox/Interface LogMan.h"
+#include "ToolboxBase/Pubc/Base Environment.h"
+#include "ToolboxBase/Pubc/Base SocketMan.h"
+#include "ToolboxBase/Pubc/Interface LogMan.h"
 
 #include <asio.hpp>
 #include <websocketpp/config/asio_no_tls.hpp>
