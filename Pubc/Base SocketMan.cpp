@@ -13,10 +13,15 @@
 #include "ToolboxBase/Pubc/Base SocketMan.h"
 #include "ToolboxBase/Pubc/Interface LogMan.h"
 
+#pragma warning(push)
+#pragma warning(disable : 4267) // Conversion from 'size_t' to 'uint32_t', possible loss of data
+
 #include <asio.hpp>
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/server.hpp>
 #include <websocketpp/transport/stub/endpoint.hpp>
+
+#pragma warning(pop)
 
 using namespace Toolbox::Base;
 
@@ -42,8 +47,8 @@ public:
 
         std::string endpoint = con->get_remote_endpoint();
         
-        int brIndex0 = endpoint.find("[");
-        int brIndex1 = endpoint.find("]");
+        auto brIndex0 = endpoint.find("[");
+        auto brIndex1 = endpoint.find("]");
 
         std::string early = endpoint.substr(brIndex0+1, brIndex1-1);
         std::string port  = endpoint.substr(brIndex1+1);
