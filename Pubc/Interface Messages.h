@@ -2,8 +2,8 @@
 
 #include <map>
 #include <string>
-#include <sstream>
 
+#include "BlackRoot/Pubc/Stringstream.h"
 #include "BlackRoot\Pubc\JSON.h"
 
 namespace Toolbox {
