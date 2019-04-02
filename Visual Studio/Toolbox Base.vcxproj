@@ -143,7 +143,8 @@
     <ClInclude Include="../Pubc/Interface Environment.h" />
     <ClInclude Include="../Pubc/Base Messages.h" />
     <ClInclude Include="../Pubc/Message Relay.h" />
-    <ClInclude Include="../Pubc/Repo.h" />
+    <ClInclude Include="..\Pubc\Version.h" />
+    <ClInclude Include="..\Pubc\Register.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../Pubc/Base LogMan.cpp" />
@@ -153,7 +154,7 @@
     <ClCompile Include="../Pubc/Interface Environment.cpp" />
     <ClCompile Include="../Pubc/Base Messages.cpp" />
     <ClCompile Include="../Pubc/Message Relay.cpp" />
-    <ClCompile Include="../Pubc/Repo.cpp" />
+    <ClCompile Include="..\Pubc\Version.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
