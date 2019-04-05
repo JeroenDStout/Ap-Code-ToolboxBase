@@ -39,6 +39,9 @@
     <ClCompile Include="..\Pubc\Version.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="..\Pubc\Entry.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Pubc\Register.h">
@@ -75,6 +78,9 @@
       <Filter>Messages</Filter>
     </ClInclude>
     <ClInclude Include="..\Pubc\Version.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Pubc\Entry.h">
       <Filter>Core</Filter>
     </ClInclude>
   </ItemGroup>
