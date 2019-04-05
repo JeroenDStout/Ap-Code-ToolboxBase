@@ -19,7 +19,7 @@ bool EnvironmentBootstrap::ExecuteFromFilePath(const BlackRoot::IO::FilePath pat
     IO::BaseFileSource fm("");
 
     if (!fm.Exists(path)) {
-        cout{} << "Bootstrap cannot find '" << path << "!" << std::endl;
+        cout{} << std::endl << "!! Bootstrap cannot find '" << path << "'!" << std::endl << std::endl;
         return false;
     }
 
@@ -29,6 +29,11 @@ bool EnvironmentBootstrap::ExecuteFromFilePath(const BlackRoot::IO::FilePath pat
     try {
         contents = fm.ReadFile(path, Mode::OpenInstr{}.Default().Share(Mode::Share::Read));
         jsonCont = Toolbox::Messaging::JSON::parse(contents);
+    }
+    catch (BlackRoot::Debug::Exception * ex) {
+        cout{} << "Bootstrap error reading '" << path << "!" << std::endl;
+        delete ex;
+        return false;
     }
     catch (...) {
         cout{} << "Bootstrap error reading '" << path << "!" << std::endl;
