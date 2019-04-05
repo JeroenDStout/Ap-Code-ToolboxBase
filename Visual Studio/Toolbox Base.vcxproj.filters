@@ -41,19 +41,41 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="../Pubc/Base LogMan.h" />
-    <ClInclude Include="../Pubc/Base Environment.h" />
-    <ClInclude Include="../Pubc/Base SocketMan.h" />
-    <ClInclude Include="../Pubc/Environment Bootstrap.h" />
-    <ClInclude Include="../Pubc/Interface Messages.h" />
-    <ClInclude Include="../Pubc/Interface SocketMan.h" />
-    <ClInclude Include="../Pubc/Interface LogMan.h" />
-    <ClInclude Include="../Pubc/Interface Environment.h" />
-    <ClInclude Include="../Pubc/Base Messages.h" />
-    <ClInclude Include="../Pubc/Message Relay.h" />
     <ClInclude Include="..\Pubc\Register.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="..\Pubc\Version.h" />
+    <ClInclude Include="../Pubc/Base Environment.h">
+      <Filter>Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="../Pubc/Base LogMan.h">
+      <Filter>Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="../Pubc/Base Messages.h">
+      <Filter>Messages</Filter>
+    </ClInclude>
+    <ClInclude Include="../Pubc/Base SocketMan.h">
+      <Filter>Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="../Pubc/Environment Bootstrap.h">
+      <Filter>Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="../Pubc/Interface Environment.h">
+      <Filter>Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="../Pubc/Interface LogMan.h">
+      <Filter>Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="../Pubc/Interface Messages.h">
+      <Filter>Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="../Pubc/Interface SocketMan.h">
+      <Filter>Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="../Pubc/Message Relay.h">
+      <Filter>Messages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Pubc\Version.h">
+      <Filter>Core</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
