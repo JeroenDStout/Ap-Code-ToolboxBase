@@ -2,8 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-#include "ToolboxBase/Pubc/Entry.h"
 #include <string.h>
+
+#include "BlackRoot/Pubc/Threaded IO Stream.h"
+
+#include "ToolboxBase/Pubc/Entry.h"
 
 int Toolbox::Core::DefaultStart(StartupFunction f, int argc, char* argv[])
 {
@@ -12,9 +15,24 @@ int Toolbox::Core::DefaultStart(StartupFunction f, int argc, char* argv[])
     bootstrap.BootPath = "";
 
     bool showConsole = true;
+    bool ping        = false;
     
     for (int i = 1; i < argc; i++) {
         auto arg = argv[i];
+
+        if (i == 1 && arg[0] != '-') {
+                // if the first argument does not start with a '-'
+                //  we assume it is the boot file; allowing boot files
+                //  to be dragged on the exe
+            
+            bootstrap.BootPath  = (arg);
+        }
+
+        if (0 == strncmp(arg, "-ping", 5)) {
+                // replies with pong
+
+            ping = true;
+        }
 
         if (0 == strncmp(arg, "-c", 2)) {
                 // enables the console
@@ -51,6 +69,11 @@ int Toolbox::Core::DefaultStart(StartupFunction f, int argc, char* argv[])
         }
     }
 #endif
+
+    if (ping) {
+        using cout = BlackRoot::Util::Cout;
+        cout{} << "Pong" << std::endl << std::endl;
+    }
 
     return f(bootstrap);
 }
