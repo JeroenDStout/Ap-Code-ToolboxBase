@@ -1,0 +1,9 @@
+{ 
+	"libraries" : [
+	{	"name" : "chriskohlhoff's asio",
+		"url"  : "github.com/chriskohlhoff/asio"
+	},
+	{	"name" : "zaphoyd's websocketpp",
+		"url"  : "github.com/zaphoyd/websocketpp"
+	} ]
+}

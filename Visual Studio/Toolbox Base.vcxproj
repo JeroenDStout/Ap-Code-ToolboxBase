@@ -89,6 +89,10 @@
       <PreprocessorDefinitions>__PROJECT__=ToolboxBase;__PROJECTSTR__="Toolbox Base";%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <PreBuildEvent />
+    <PreBuildEvent>
+      <Command>cd ../meta
+../../BlackRoot/meta/create_repo_version.bat "$(ProjectName)"</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -99,6 +103,10 @@
       <PreprocessorDefinitions>__PROJECT__=ToolboxBase;__PROJECTSTR__="Toolbox Base";%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <PreBuildEvent />
+    <PreBuildEvent>
+      <Command>cd ../meta
+../../BlackRoot/meta/create_repo_version.bat "$(ProjectName)"</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -115,6 +123,10 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PreBuildEvent />
+    <PreBuildEvent>
+      <Command>cd ../meta
+../../BlackRoot/meta/create_repo_version.bat "$(ProjectName)"</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -131,6 +143,10 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PreBuildEvent />
+    <PreBuildEvent>
+      <Command>cd ../meta
+../../BlackRoot/meta/create_repo_version.bat "$(ProjectName)"</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="../Pubc/Base LogMan.h" />
@@ -157,6 +173,38 @@
     <ClCompile Include="../Pubc/Message Relay.cpp" />
     <ClCompile Include="..\Pubc\Entry.cpp" />
     <ClCompile Include="..\Pubc\Version.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\Meta\generate_meta.txt">
+      <FileType>Document</FileType>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Generating meta</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Generating meta</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating meta</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating meta</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">py "$(SolutionDir)../BlackRoot/Meta/generate_meta.py" "$(ProjectName)" "$(ProjectDir)../Meta" "$(ProjectDir)../.genc"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">py "$(SolutionDir)../BlackRoot/Meta/generate_meta.py" "$(ProjectName)" "$(ProjectDir)../Meta" "$(ProjectDir)../.genc"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">py "$(SolutionDir)../BlackRoot/Meta/generate_meta.py" "$(ProjectName)" "$(ProjectDir)../Meta" "$(ProjectDir)../.genc"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">py "$(SolutionDir)../BlackRoot/Meta/generate_meta.py" "$(ProjectName)" "$(ProjectDir)../Meta" "$(ProjectDir)../.genc"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)..\.genc\def_contribute.h</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)..\.genc\def_contribute.h</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)..\.genc\def_contribute.h</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)..\.genc\def_contribute.h</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)..\meta\contributors.json;$(ProjectDir)..\meta\libraries.json</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)..\meta\contributors.json;$(ProjectDir)..\meta\libraries.json</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)..\meta\contributors.json;$(ProjectDir)..\meta\libraries.json</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)..\meta\contributors.json;$(ProjectDir)..\meta\libraries.json</AdditionalInputs>
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BuildInParallel>
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BuildInParallel>
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</BuildInParallel>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Meta\contributors.json" />
+    <None Include="..\Meta\libraries.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\Meta\licence_name.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

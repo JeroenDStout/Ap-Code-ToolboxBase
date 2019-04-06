@@ -13,6 +13,9 @@
     <Filter Include="Utility">
       <UniqueIdentifier>{03a51a99-59af-47de-97c9-68f163be14f6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Meta">
+      <UniqueIdentifier>{9c28da7f-c311-4967-8257-a4e1e25782a6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../Pubc/Base Environment.cpp">
@@ -83,5 +86,23 @@
     <ClInclude Include="..\Pubc\Entry.h">
       <Filter>Core</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\Meta\generate_meta.txt">
+      <Filter>Meta</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Meta\contributors.json">
+      <Filter>Meta</Filter>
+    </None>
+    <None Include="..\Meta\libraries.json">
+      <Filter>Meta</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\Meta\licence_name.txt">
+      <Filter>Meta</Filter>
+    </Text>
   </ItemGroup>
 </Project>
