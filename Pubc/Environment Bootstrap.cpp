@@ -31,16 +31,16 @@ bool EnvironmentBootstrap::ExecuteFromFilePath(const BlackRoot::IO::FilePath pat
         jsonCont = Toolbox::Messaging::JSON::parse(contents);
     }
     catch (BlackRoot::Debug::Exception * ex) {
-        cout{} << "Bootstrap error reading '" << path << "!" << std::endl;
-        delete ex;
+        cout{} << "Bootstrap error reading '" << path << "'!" << std::endl;
+        cout{} << " " << ex->GetPrettyDescription() << std::endl;
         return false;
     }
     catch (...) {
-        cout{} << "Bootstrap error reading '" << path << "!" << std::endl;
+        cout{} << "Unknown bootstrap error reading '" << path << "'!" << std::endl;
         return false;
     }
     
-    cout{} << "Bootstrap loading from '" << path << "!" << std::endl;
+    cout{} << "Bootstrap loading from '" << path << "'!" << std::endl;
     
     BlackRoot::Util::JSONMerge merger(&fm, std::move(jsonCont));
     merger.MergeRecursively();
