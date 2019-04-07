@@ -9,14 +9,6 @@
 #define ASIO_STANDALONE 
 #define _WEBSOCKETPP_CPP11_TYPE_TRAITS_
 
-#include <set>
-
-#include "BlackRoot/Pubc/Threaded IO Stream.h"
-
-#include "ToolboxBase/Pubc/Base Environment.h"
-#include "ToolboxBase/Pubc/Base SocketMan.h"
-#include "ToolboxBase/Pubc/Interface LogMan.h"
-
 #pragma warning(push)
 #pragma warning(disable : 4267) // Conversion from 'size_t' to 'uint32_t', possible loss of data
 
@@ -26,6 +18,14 @@
 #include <websocketpp/transport/stub/endpoint.hpp>
 
 #pragma warning(pop)
+
+#include <set>
+
+#include "BlackRoot/Pubc/Threaded IO Stream.h"
+
+#include "ToolboxBase/Pubc/Base Environment.h"
+#include "ToolboxBase/Pubc/Base SocketMan.h"
+#include "ToolboxBase/Pubc/Interface LogMan.h"
 
 using namespace Toolbox::Base;
 
