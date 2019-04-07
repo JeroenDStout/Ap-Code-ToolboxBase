@@ -5,6 +5,8 @@
 #include <string.h>
 
 #include "BlackRoot/Pubc/Threaded IO Stream.h"
+#include "BlackRoot/Pubc/Files Types.h"
+#include "BlackRoot/Pubc/Sys Path.h"
 
 #include "ToolboxBase/Pubc/Entry.h"
 
@@ -12,7 +14,9 @@ int Toolbox::Core::DefaultStart(StartupFunction f, int argc, char* argv[])
 {
     Toolbox::Util::EnvironmentBootstrap bootstrap;
 
-    bootstrap.BootPath = "";
+    bootstrap.BootPath = BlackRoot::System::GetCurrentPath();
+
+    std::string bootPathAppend = "";
 
     bool showConsole = true;
     bool ping        = false;
@@ -25,7 +29,7 @@ int Toolbox::Core::DefaultStart(StartupFunction f, int argc, char* argv[])
                 //  we assume it is the boot file; allowing boot files
                 //  to be dragged on the exe
             
-            bootstrap.BootPath  = (arg);
+            bootPathAppend  = (arg);
         }
 
         if (0 == strncmp(arg, "-ping", 5)) {
@@ -56,8 +60,16 @@ int Toolbox::Core::DefaultStart(StartupFunction f, int argc, char* argv[])
                 // selects the bootstrap file
                 // -b:<path>
 
-            bootstrap.BootPath  = (arg+3);
+            bootPathAppend  = (arg+3);
         }
+    }
+
+    if (bootPathAppend.length() > 0) {
+        bootstrap.BootPath /= bootPathAppend;
+        bootstrap.BootPath = BlackRoot::System::MakePathCanonical(bootstrap.BootPath);
+    }
+    else {
+        bootstrap.BootPath = "";
     }
     
 #ifdef _WIN32

@@ -4,12 +4,29 @@
 
 #include "BlackRoot/Pubc/Threaded IO Stream.h"
 #include "BlackRoot/Pubc/JSON Merge.h"
-#include "BlackRoot/Pubc/Files.h"
+#include "BlackRoot/Pubc/Files Types.h"
+#include "BlackRoot/Pubc/Sys Path.h"
 
 #include "ToolboxBase/Pubc/Base Messages.h"
 #include "ToolboxBase/Pubc/Environment Bootstrap.h"
 
 using namespace Toolbox::Util;
+
+void EnvironmentBootstrap::SetupEnvironment(Toolbox::Core::IEnvironment * env) {
+    this->Environment = env;
+
+    std::string bootDir = "";
+    if (!this->BootPath.empty()) {
+        bootDir = this->BootPath.string();
+    }
+
+    auto pos = bootDir.find_last_of(BlackRoot::System::DirSeperator);
+    if (pos != std::string::npos) {
+        bootDir = bootDir.substr(0, pos);
+    }
+    this->Environment->SetBootDir(bootDir);
+    this->Environment->SetRefDir("{boot}");
+}
 
 bool EnvironmentBootstrap::ExecuteFromFilePath(const BlackRoot::IO::FilePath path) {
     namespace IO   = BlackRoot::IO;
@@ -31,16 +48,16 @@ bool EnvironmentBootstrap::ExecuteFromFilePath(const BlackRoot::IO::FilePath pat
         jsonCont = Toolbox::Messaging::JSON::parse(contents);
     }
     catch (BlackRoot::Debug::Exception * ex) {
-        cout{} << "Bootstrap error reading '" << path << "'!" << std::endl;
+        cout{} << "!! Bootstrap error reading" << std::endl << " " << path << std::endl;
         cout{} << " " << ex->GetPrettyDescription() << std::endl;
         return false;
     }
     catch (...) {
-        cout{} << "Unknown bootstrap error reading '" << path << "'!" << std::endl;
+        cout{} << "!! Bootstrap unknown error reading" << std::endl << " " << path << std::endl;
         return false;
     }
     
-    cout{} << "Bootstrap loading from '" << path << "'!" << std::endl;
+    cout{} << "Bootstrap loading from" << std::endl << " " << path << std::endl;
     
     BlackRoot::Util::JSONMerge merger(&fm, std::move(jsonCont));
     merger.MergeRecursively();
