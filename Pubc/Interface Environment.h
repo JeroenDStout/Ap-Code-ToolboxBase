@@ -5,6 +5,8 @@
 #pragma once
 
 #include "BlackRoot/Pubc/JSON.h"
+#include "BlackRoot/Pubc/Files.h"
+
 #include "ToolboxBase/Pubc\Interface Messages.h"
 
 namespace Toolbox {
@@ -19,6 +21,8 @@ namespace Core {
 
 	class IEnvironment : public virtual Messaging::IMessageReceiver {
 	public:
+        using FilePath = BlackRoot::IO::FilePath;
+
 		ILogMan		*LogMan;
 		ISocketMan	*SocketMan;
 
@@ -36,6 +40,9 @@ namespace Core {
         virtual bool IsRunning() = 0;
 
         virtual void UnloadAll() = 0;
+
+        virtual void SetBootDir(FilePath) = 0;
+        virtual void SetRefDir(FilePath) = 0;
 
         virtual ILogMan *    AllocateLogMan() = 0;
         virtual ISocketMan * AllocateSocketMan() = 0;

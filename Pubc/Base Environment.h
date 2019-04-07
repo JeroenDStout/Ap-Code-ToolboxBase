@@ -34,6 +34,11 @@ namespace Base {
             };
         };
 
+        struct __EnvProps {
+            FilePath     BootDir;
+            FilePath     ReferenceDir;
+        } EnvProps;
+
         struct __BaseStats {
             std::chrono::high_resolution_clock::time_point  StartTime;
         } BaseStats;
@@ -79,8 +84,12 @@ namespace Base {
 
         void UnloadAll() override;
         
+        void SetBootDir(FilePath) override;
+        void SetRefDir(FilePath) override;
+
         TB_MESSAGES_DECLARE_MEMBER_FUNCTION(ping);
         TB_MESSAGES_DECLARE_MEMBER_FUNCTION(stats);
+        TB_MESSAGES_DECLARE_MEMBER_FUNCTION(setRefDir);
         TB_MESSAGES_DECLARE_MEMBER_FUNCTION(createLogMan);
         TB_MESSAGES_DECLARE_MEMBER_FUNCTION(createSocketMan);
         TB_MESSAGES_DECLARE_MEMBER_FUNCTION(close);

@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "BlackRoot\Pubc\Threaded IO Stream.h"
+#include "BlackRoot\Pubc\Sys Path.h"
 
 #include "ToolboxBase/Pubc/Base Environment.h"
 #include "ToolboxBase/Pubc/Base LogMan.h"
@@ -17,6 +18,7 @@ TB_MESSAGES_BEGIN_DEFINE(BaseEnvironment);
 TB_MESSAGES_ENUM_BEGIN_MEMBER_FUNCTIONS(BaseEnvironment);
 TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, close);
 TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, stats);
+TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, setRefDir);
 TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, createSocketMan);
 TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, ping);
 TB_MESSAGES_ENUM_END_MEMBER_FUNCTIONS(BaseEnvironment);
@@ -171,6 +173,27 @@ void BaseEnvironment::Close()
     this->MessageCV.notify_all();
 }
 
+void BaseEnvironment::SetBootDir(FilePath path)
+{
+    this->EnvProps.BootDir = BlackRoot::System::MakePathCanonical(path);
+}
+
+void BaseEnvironment::SetRefDir(FilePath path)
+{
+    using cout = BlackRoot::Util::Cout;
+
+    auto str = path.string();
+
+    std::size_t pos;
+    while (std::string::npos != (pos = str.find("{boot}"))) {
+        str.replace(str.begin() + pos, str.begin() + pos + 6, this->EnvProps.BootDir.string());
+    }
+
+    this->EnvProps.ReferenceDir = BlackRoot::System::MakePathCanonical(str);
+    
+    cout{} << "Env: Reference dir is now" << std::endl << " " << this->EnvProps.ReferenceDir << std::endl;
+}
+
 void BaseEnvironment::InternalInitStats()
 {
     this->BaseStats.StartTime = std::chrono::high_resolution_clock::now();
@@ -185,6 +208,19 @@ void BaseEnvironment::InternalCompileStats(BlackRoot::Format::JSON & json)
     BlackRoot::Format::JSON & Managers = json["Managers"];
     Managers["SocketMan"] = this->SocketMan    ? "Loaded" : "Not Loaded";
     Managers["LogMan"]    = this->LogMan       ? "Loaded" : "Not Loaded";
+}
+
+void BaseEnvironment::_setRefDir(Toolbox::Messaging::IAsynchMessage * msg)
+{
+    std::string s = msg->Message.begin().value();
+
+    this->SetRefDir(s);
+    
+    std::stringstream ss;
+    ss << "Env: Reference directory is now '" << this->EnvProps.ReferenceDir << "'";
+
+    msg->Response = { ss.str() };
+    msg->SetOK();
 }
 
 void BaseEnvironment::_stats(Toolbox::Messaging::IAsynchMessage * msg)
