@@ -6,6 +6,7 @@
 
 #include "BlackRoot\Pubc\Threaded IO Stream.h"
 #include "BlackRoot\Pubc\Sys Path.h"
+#include "BlackRoot/Pubc/Version Reg.h"
 
 #include "ToolboxBase/Pubc/Base Environment.h"
 #include "ToolboxBase/Pubc/Base LogMan.h"
@@ -20,6 +21,7 @@ TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, close);
 TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, stats);
 TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, setRefDir);
 TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, createSocketMan);
+TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, printCodeCredits);
 TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, ping);
 TB_MESSAGES_ENUM_END_MEMBER_FUNCTIONS(BaseEnvironment);
 
@@ -273,6 +275,12 @@ void BaseEnvironment::_createSocketMan(Toolbox::Messaging::IAsynchMessage * msg)
     msg->SetOK();
 
     this->CreateSocketMan();
+}
+
+void BaseEnvironment::_printCodeCredits(Toolbox::Messaging::IAsynchMessage * msg)
+{
+    msg->Response = { BlackRoot::Repo::VersionRegistry::GetBootString() };
+    msg->SetOK();
 }
 
 Toolbox::Core::ILogMan * BaseEnvironment::AllocateLogMan()
