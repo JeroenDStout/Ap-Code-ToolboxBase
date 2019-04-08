@@ -88,6 +88,8 @@ namespace Base {
         void SetBootDir(FilePath) override;
         void SetRefDir(FilePath) override;
 
+        FilePath GetRefDir() override;
+
         TB_MESSAGES_DECLARE_MEMBER_FUNCTION(ping);
         TB_MESSAGES_DECLARE_MEMBER_FUNCTION(stats);
         TB_MESSAGES_DECLARE_MEMBER_FUNCTION(setRefDir);

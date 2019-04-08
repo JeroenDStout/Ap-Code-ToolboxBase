@@ -44,6 +44,8 @@ namespace Core {
         virtual void SetBootDir(FilePath) = 0;
         virtual void SetRefDir(FilePath) = 0;
 
+        virtual FilePath GetRefDir() = 0;
+
         virtual ILogMan *    AllocateLogMan() = 0;
         virtual ISocketMan * AllocateSocketMan() = 0;
 	};

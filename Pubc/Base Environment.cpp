@@ -194,6 +194,11 @@ void BaseEnvironment::SetRefDir(FilePath path)
     cout{} << "Env: Reference dir is now" << std::endl << " " << this->EnvProps.ReferenceDir << std::endl;
 }
 
+BaseEnvironment::FilePath BaseEnvironment::GetRefDir()
+{
+    return this->EnvProps.ReferenceDir;
+}
+
 void BaseEnvironment::InternalInitStats()
 {
     this->BaseStats.StartTime = std::chrono::high_resolution_clock::now();
