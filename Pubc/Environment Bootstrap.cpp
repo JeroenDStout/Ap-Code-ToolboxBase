@@ -59,10 +59,10 @@ bool EnvironmentBootstrap::ExecuteFromFilePath(const BlackRoot::IO::FilePath pat
     
     cout{} << "Bootstrap loading from" << std::endl << " " << path << std::endl;
     
-    BlackRoot::Util::JSONMerge merger(&fm, std::move(jsonCont));
+    BlackRoot::Util::JSONMerge merger(&fm, &jsonCont);
     merger.MergeRecursively();
 
-    return this->ExecuteFromJSON(merger.JSON);
+    return this->ExecuteFromJSON(jsonCont);
 }
 
 bool EnvironmentBootstrap::ExecuteFromJSON(Toolbox::Messaging::JSON json)
