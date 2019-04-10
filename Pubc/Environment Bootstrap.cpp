@@ -83,7 +83,9 @@ bool EnvironmentBootstrap::ExecuteFromJSON(Toolbox::Messaging::JSON json)
                     return false;
                 }
             
-                cout{} << "< " << msg.Response.dump() << std::endl;
+                if (!msg.Response.is_null()) {
+                    cout{} << "< " << msg.Response.dump() << std::endl;
+                }
             }
         }
         else {
