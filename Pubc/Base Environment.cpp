@@ -13,6 +13,7 @@
 #include "ToolboxBase/Pubc/Base SocketMan.h"
 
 using namespace Toolbox::Base;
+namespace fs = std::experimental::filesystem;
 
 TB_MESSAGES_BEGIN_DEFINE(BaseEnvironment);
 
@@ -177,7 +178,7 @@ void BaseEnvironment::Close()
 
 void BaseEnvironment::SetBootDir(FilePath path)
 {
-    this->EnvProps.BootDir = BlackRoot::System::MakePathCanonical(path);
+    this->EnvProps.BootDir = fs::canonical(path);
 }
 
 void BaseEnvironment::SetRefDir(FilePath path)
@@ -191,7 +192,7 @@ void BaseEnvironment::SetRefDir(FilePath path)
         str.replace(str.begin() + pos, str.begin() + pos + 6, this->EnvProps.BootDir.string());
     }
 
-    this->EnvProps.ReferenceDir = BlackRoot::System::MakePathCanonical(str);
+    this->EnvProps.ReferenceDir = fs::canonical(str);
     
     cout{} << "Env: Reference dir is now" << std::endl << " " << this->EnvProps.ReferenceDir << std::endl;
 }

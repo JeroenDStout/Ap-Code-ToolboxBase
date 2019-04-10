@@ -10,11 +10,13 @@
 
 #include "ToolboxBase/Pubc/Entry.h"
 
+namespace fs = std::experimental::filesystem;
+
 int Toolbox::Core::DefaultStart(StartupFunction f, int argc, char* argv[])
 {
     Toolbox::Util::EnvironmentBootstrap bootstrap;
 
-    bootstrap.BootPath = BlackRoot::System::GetCurrentPath();
+    bootstrap.BootPath = fs::current_path();
 
     std::string bootPathAppend = "";
 
@@ -66,7 +68,7 @@ int Toolbox::Core::DefaultStart(StartupFunction f, int argc, char* argv[])
 
     if (bootPathAppend.length() > 0) {
         bootstrap.BootPath /= bootPathAppend;
-        bootstrap.BootPath = BlackRoot::System::MakePathCanonical(bootstrap.BootPath);
+        bootstrap.BootPath = fs::canonical(bootstrap.BootPath);
     }
     else {
         bootstrap.BootPath = "";
