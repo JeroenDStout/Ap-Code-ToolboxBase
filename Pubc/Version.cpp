@@ -3,8 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "ToolboxBase/Pubc/Version.h"
-#include "ToolboxBase/.genc/def_repo_version.h"
-#include "ToolboxBase/.genc/def_contribute.h"
+#include "ToolboxBase/-genc/def_repo_version.h"
+#include "ToolboxBase/-genc/def_contribute.h"
 
 namespace Toolbox {
 namespace Core {

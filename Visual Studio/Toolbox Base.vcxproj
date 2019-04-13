@@ -163,8 +163,8 @@
     <CustomBuild Include="..\Meta\generate_meta.txt">
       <FileType>Document</FileType>
       <Message>Generating meta</Message>
-      <Command>python "$(SolutionDir)../BlackRoot/Meta/generate_meta.py" "$(ProjectName)" "$(ProjectDir)../Meta" "$(ProjectDir)../.genc"</Command>
-      <Outputs>$(ProjectDir)..\.genc\def_contribute.h</Outputs>
+      <Command>python "$(SolutionDir)../BlackRoot/Meta/generate_meta.py" "$(ProjectName)" "$(ProjectDir)../Meta" "$(ProjectDir)../-genc"</Command>
+      <Outputs>$(ProjectDir)..\-genc\def_contribute.h</Outputs>
       <AdditionalInputs>$(ProjectDir)..\meta\contributors.json;$(ProjectDir)..\meta\libraries.json</AdditionalInputs>
       <BuildInParallel>true</BuildInParallel>
     </CustomBuild>
