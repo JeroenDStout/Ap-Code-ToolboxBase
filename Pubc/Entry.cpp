@@ -67,7 +67,13 @@ int Toolbox::Core::DefaultStart(StartupFunction f, int argc, char* argv[])
     }
 
     if (bootPathAppend.length() > 0) {
-        bootstrap.BootPath /= bootPathAppend;
+        BlackRoot::IO::FilePath append = bootPathAppend;
+        if (append.is_relative()) {
+            bootstrap.BootPath /= bootPathAppend;
+        }
+        else {
+            bootstrap.BootPath = bootPathAppend;
+        }
         bootstrap.BootPath = fs::canonical(bootstrap.BootPath);
     }
     else {
