@@ -46,6 +46,7 @@ void BaseEnvironment::UnloadAll()
 
 void BaseEnvironment::InternalSetupRelayMap()
 {
+    this->MessageRelay.Emplace("",     this, &BaseEnvironment::InternalMessageRelayToNone, this, &BaseEnvironment::InternalMessageSendToEnv);
     this->MessageRelay.Emplace("env",  this, &BaseEnvironment::InternalMessageRelayToNone, this, &BaseEnvironment::InternalMessageSendToEnv);
     this->MessageRelay.Emplace("sock", this, &BaseEnvironment::InternalMessageRelayToNone, this, &BaseEnvironment::InternalMessageSendToNone);
 }
