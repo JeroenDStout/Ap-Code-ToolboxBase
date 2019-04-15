@@ -97,6 +97,7 @@ namespace Base {
         TB_MESSAGES_DECLARE_MEMBER_FUNCTION(createSocketMan);
         TB_MESSAGES_DECLARE_MEMBER_FUNCTION(close);
         TB_MESSAGES_DECLARE_MEMBER_FUNCTION(printCodeCredits);
+        TB_MESSAGES_DECLARE_MEMBER_FUNCTION(http);
 
         Core::ILogMan *    AllocateLogMan() override;
         Core::ISocketMan * AllocateSocketMan() override;

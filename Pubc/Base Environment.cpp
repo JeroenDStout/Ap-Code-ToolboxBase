@@ -24,6 +24,7 @@ TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, setRefDir);
 TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, createSocketMan);
 TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, printCodeCredits);
 TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, ping);
+TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, http);
 TB_MESSAGES_ENUM_END_MEMBER_FUNCTIONS(BaseEnvironment);
 
 TB_MESSAGES_END_DEFINE(BaseEnvironment);
@@ -282,6 +283,67 @@ void BaseEnvironment::_createSocketMan(Toolbox::Messaging::IAsynchMessage * msg)
 void BaseEnvironment::_printCodeCredits(Toolbox::Messaging::IAsynchMessage * msg)
 {
     msg->Response = { BlackRoot::Repo::VersionRegistry::GetBootString() };
+    msg->SetOK();
+}
+
+void BaseEnvironment::_http(Toolbox::Messaging::IAsynchMessage * msg)
+{
+    std::stringstream ss;
+
+    auto registry = BlackRoot::Repo::VersionRegistry::GetRegistry();
+
+    auto mainProj = registry->GetMainProjectVersion();
+
+	ss << "<!doctype html>" << std::endl
+		<< "<html>" << std::endl
+		<< " <head>" << std::endl
+		<< "  <title>" << mainProj.Name << " - Base Environment</title>" << std::endl
+		<< " </head>" << std::endl
+		<< " <body>" << std::endl
+		<< "  <h1>" << mainProj.Name << "</h1>" << std::endl
+		<< "  <p>" << mainProj.Version << "<br/>" << mainProj.BuildTool << "</p><p>" << std::endl;
+    
+        // Print loaded module links
+    bool printedList = false;
+    for (auto & it : this->MessageRelay.RelayMap) {
+        if (it.first.length() == 0)
+            continue;
+        if (printedList) {
+            ss << " - ";
+        }
+		ss << "  <a href=\"" << it.first << "\">" << it.first << "</a>" << std::endl;
+        printedList = true;
+    }
+	ss << "</p>" << std::endl;
+
+        // Print contribution and version strings
+    std::string version;
+    version = registry->GetVersionString();
+
+    std::string from = "\n";
+    std::string to = "<br/>";
+    size_t start_pos = 0;
+    while((start_pos = version.find(from, start_pos)) != std::string::npos) {
+        version.replace(start_pos, from.length(), to);
+        start_pos += to.length();
+    }
+    
+    std::string contribution;
+    contribution = registry->GetFullContributionString();
+    start_pos = 0;
+    while((start_pos = contribution.find(from, start_pos)) != std::string::npos) {
+        contribution.replace(start_pos, from.length(), to);
+        start_pos += to.length();
+    }
+
+	ss << "  <h1>About</h1>" << std::endl
+	   << "  <p>" << contribution << "</p>" << std::endl
+	   << "  <p>" << version << "</p>" << std::endl;
+
+    ss  << " </body>" << std::endl
+		<< "</html>";
+
+    msg->Response = { { "http", ss.str() } };
     msg->SetOK();
 }
 
