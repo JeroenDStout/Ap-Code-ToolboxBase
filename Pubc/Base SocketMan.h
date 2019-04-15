@@ -25,9 +25,9 @@ namespace Base {
         Server  *InternalServer;
 
         std::vector<std::pair<std::string, ConnectionPtr>> 
-                                                  OpenConnections;
-        std::map<std::string, std::string>        Whitelist;
-        std::vector<std::unique_ptr<std::thread>> ListenThreads;
+                                                         OpenConnections;
+        std::vector<std::pair<std::string, std::regex>>  Whitelist;
+        std::vector<std::unique_ptr<std::thread>>        ListenThreads;
 
         virtual void InternalServerListen();
         virtual void InternalServerTalk();

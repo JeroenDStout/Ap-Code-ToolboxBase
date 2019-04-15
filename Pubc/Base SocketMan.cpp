@@ -130,8 +130,17 @@ void SocketMan::InternalServerTalk()
 
 void SocketMan::Initialise(BlackRoot::Format::JSON * param)
 {
-    this->Whitelist.insert( { "::1", "localhost" } );
-    this->Whitelist.insert( { "::ffff:127.0.0.1", "localhost" } );
+    this->Whitelist.push_back( { "localhost", std::regex("localhost") } );
+    this->Whitelist.push_back( { "localhost", std::regex("::ffff:127\\.0\\.0\\.1") } );
+
+        // Match 10.0.0.0 to 10.255.255.255
+    this->Whitelist.push_back( { "local network", std::regex("::ffff:10\\..*\\..*\\..*") } );
+
+        // Match 172.16.0.0 to 172.31.255.255
+    this->Whitelist.push_back( { "local network", std::regex("::ffff:172\\.(1[6-9]|2[0-9]|3[01])\\..*\\..*") } );
+    
+        // Match 192.168.0.0 to 192.168.255.255
+    this->Whitelist.push_back( { "local network", std::regex("::ffff:192\\.168\\..*\\..*") } );
 
     this->InternalServer = new Server;
     this->InternalServer->socketMan = this;
