@@ -5,6 +5,7 @@
 #pragma once
 
 #include <thread>
+#include <regex>
 #include "ToolboxBase/Pubc/Interface SocketMan.h"
 
 namespace Toolbox {

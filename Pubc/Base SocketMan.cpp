@@ -16,6 +16,7 @@
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/server.hpp>
 #include <websocketpp/transport/stub/endpoint.hpp>
+#include <websocketpp/http/request.hpp>
 
 #pragma warning(pop)
 
@@ -90,22 +91,44 @@ public:
 	}
 
 	void on_http(connection_hdl hdl) {
+        using cout = BlackRoot::Util::Cout;
+
         std::string dummy;
         
 		server::connection_ptr con = this->get_con_from_hdl(hdl);
         if (!con)
             return;
 
+            // We check if this connexion should be allowed
         if (!this->validate_via_socketman(hdl, dummy)) {
             con->set_status(websocketpp::http::status_code::forbidden);
             return;
         }
 
-        
+            // Process the HTTP request; for now this ignores
+            // unexpected situations
+        auto & request = con->get_request();
+        websocketpp::http::parser::request parcer;
+        parcer.consume(request.raw().c_str(), request.raw().length());
+
+            // We literally send the uri request into the message
+            // system; we expect a down-the-line object to route
+            // it properly
+        std::string uri = parcer.get_uri();
+        size_t remove;
+        for (remove = 0; remove < uri.length(); remove++) {
+            if (uri[remove] != '/')
+                break;
+        }
+        uri.erase(0, remove);
+
+            // Construct message: we wait *directly* for this message,
+            // so for now this blocks the current thread
         Toolbox::Messaging::AwaitMessage msg;
-        msg.Message = { {  "env", { "Http" } } };
-        
+        msg.Message = { { uri, { "http" } } };
         Toolbox::Core::GetEnvironment()->ReceiveDelegateMessageAsync(&msg);
+
+            // We wait for the response and send it off
         if (msg.AwaitSuccess()) {
             Toolbox::Messaging::JSON resp = msg.Response["http"];
             con->set_body(resp.get<std::string>());
@@ -131,6 +154,7 @@ void SocketMan::InternalServerTalk()
 void SocketMan::Initialise(BlackRoot::Format::JSON * param)
 {
     this->Whitelist.push_back( { "localhost", std::regex("localhost") } );
+    this->Whitelist.push_back( { "localhost", std::regex("::1") } );
     this->Whitelist.push_back( { "localhost", std::regex("::ffff:127\\.0\\.0\\.1") } );
 
         // Match 10.0.0.0 to 10.255.255.255
@@ -182,10 +206,12 @@ bool SocketMan::InternalValidateConnection(std::string ip, std::string port, std
     using cout = BlackRoot::Util::Cout;
 
     std::map<std::string, std::string>::iterator it;
-    it = this->Whitelist.find(ip);
-    if (it != this->Whitelist.end()) {
-        cout{} << "[SocketMan] incoming : " << it->second << std::endl;
-        outName = it->second;
+
+    for (auto & it : this->Whitelist) {
+        if (!std::regex_search(ip, it.second))
+            continue;
+        cout{} << "[SocketMan] incoming : " << it.first << " (" << ip << ")" << std::endl;
+        outName = it.first;
         return true;
     }
 
