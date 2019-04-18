@@ -4,317 +4,223 @@
 
 #include <iostream>
 
+#include "BlackRoot/Pubc/Assert.h"
 #include "BlackRoot/Pubc/Version Reg.h"
 #include "BlackRoot/Pubc/Threaded IO Stream.h"
 #include "BlackRoot/Pubc/Sys Path.h"
 
 #include "ToolboxBase/Pubc/Base Environment.h"
-#include "ToolboxBase/Pubc/Base LogMan.h"
-#include "ToolboxBase/Pubc/Base SocketMan.h"
+
+#include "ToolboxBase/Pubc/Base Logman.h"
+#include "ToolboxBase/Pubc/Base Socketman.h"
 
 using namespace Toolbox::Base;
 namespace fs = std::experimental::filesystem;
 
-TB_MESSAGES_BEGIN_DEFINE(BaseEnvironment);
+    //  Relay message receiver
+    // --------------------
 
-TB_MESSAGES_ENUM_BEGIN_MEMBER_FUNCTIONS(BaseEnvironment);
-TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, close);
-TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, stats);
-TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, setRefDir);
-TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, createSocketMan);
-TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, printCodeCredits);
-TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, ping);
-TB_MESSAGES_ENUM_MEMBER_FUNCTION(BaseEnvironment, http);
-TB_MESSAGES_ENUM_END_MEMBER_FUNCTIONS(BaseEnvironment);
+CON_RMR_DEFINE_CLASS(BaseEnvironment);
 
-TB_MESSAGES_END_DEFINE(BaseEnvironment);
+CON_RMR_REGISTER_FUNC(BaseEnvironment, set_ref_dir);
+CON_RMR_REGISTER_FUNC(BaseEnvironment, stats);
+CON_RMR_REGISTER_FUNC(BaseEnvironment, code_credits);
+CON_RMR_REGISTER_FUNC(BaseEnvironment, create_logman);
+CON_RMR_REGISTER_FUNC(BaseEnvironment, create_socketman);
+CON_RMR_REGISTER_FUNC(BaseEnvironment, close);
+CON_RMR_REGISTER_FUNC(BaseEnvironment, ping);
+
+    //  Setup
+    // --------------------
 
 BaseEnvironment::BaseEnvironment()
 {
-    this->SocketMan = nullptr;
+    this->Logman      = nullptr;
+    this->Socketman   = nullptr;
+
+    this->Message_Nexus->set_ad_hoc_message_handling([=](Conduits::Raw::ConduitRef, Conduits::Raw::IRelayMessage * msg){
+        this->rmr_handle_message_immediate_and_release(msg);
+    });
+
+    this->Simple_Relay.Call_Map["env"] = [=](Conduits::Raw::IRelayMessage * msg) {
+        return this->rmr_handle_message_immediate(msg);
+    };
 }
 
 BaseEnvironment::~BaseEnvironment()
 {
 }
 
-void BaseEnvironment::UnloadAll()
-{
-    if (this->SocketMan) {
-        this->SocketMan->Deinitialise(nullptr);
-    }
-}
+    //  Control
+    // --------------------
 
-void BaseEnvironment::InternalSetupRelayMap()
-{
-    this->MessageRelay.Emplace("",     this, &BaseEnvironment::InternalMessageRelayToNone, this, &BaseEnvironment::InternalMessageSendToEnv);
-    this->MessageRelay.Emplace("env",  this, &BaseEnvironment::InternalMessageRelayToNone, this, &BaseEnvironment::InternalMessageSendToEnv);
-    this->MessageRelay.Emplace("sock", this, &BaseEnvironment::InternalMessageRelayToNone, this, &BaseEnvironment::InternalMessageSendToNone);
-}
-
-void BaseEnvironment::InternalMessageLoop()
-{
-    // Only one thread should be in here
-
-    while (true) {
-        std::unique_lock<std::mutex> lk(this->MessageWaitMutex);
-        this->MessageCV.wait(lk, std::bind(&BaseEnvironment::InternalThreadsShouldBeAwake, this) );
-        lk.unlock();
-        
-        Messaging::IAsynchMessage * message = nullptr;
-
-        std::unique_lock<std::mutex> msml(this->MessageCueMutex);
-        if (this->MessageCue.size() > 0) {
-            message = this->MessageCue[0];
-            this->MessageCue.erase(this->MessageCue.begin());
-        }
-        msml.unlock();
-
-        if (message) {
-            this->InternalHandleMessage(message);
-        }
-
-        if (this->CurrentState == StateType::ShouldClose)
-            break;
-    }
-}
-
-bool BaseEnvironment::InternalThreadsShouldBeAwake()
-{
-    return this->CurrentState != StateType::Running || this->MessageCue.size() > 0;
-}
-
-void BaseEnvironment::InternalHandleMessage(Toolbox::Messaging::IAsynchMessage * message)
-{
-    this->MessageRelay.RelayMessageSafe(message);
-}
-
-void BaseEnvironment::InternalMessageRelayToNone(std::string target, Toolbox::Messaging::IAsynchMessage *message)
-{
-    std::stringstream reply;
-    reply << "The manager '" << target << "' cannot relay this.";
-
-    message->SetFailed();
-    message->Response = {"No relay", reply.str() };
-    message->Close();
-}
-
-void BaseEnvironment::InternalMessageSendToNone(std::string target, Toolbox::Messaging::IAsynchMessage *message)
-{
-    std::stringstream reply;
-    reply << "The manager '" << target << "' has not been loaded.";
-
-    message->SetFailed();
-    message->Response = {"Not loaded", reply.str() };
-    message->Close();
-}
-
-void BaseEnvironment::InternalMessageSendToEnv(std::string, Toolbox::Messaging::IAsynchMessage *message)
-{
-    this->MessageReceiveImmediate(message);
-}
-
-void BaseEnvironment::ReceiveDelegateMessageAsync(Toolbox::Messaging::IAsynchMessage *message)
-{
-    std::unique_lock<std::mutex> lk(this->MessageCueMutex);
-    this->MessageCue.push_back(message);
-    lk.unlock();
-    
-    std::unique_lock<std::mutex> lk2(this->MessageWaitMutex);
-    this->MessageCV.notify_one();
-}
-
-void BaseEnvironment::ReceiveDelegateMessageFromSocket(std::weak_ptr<void> ptr, std::string string)
-{
-    try {
-        auto json = Toolbox::Messaging::JSON::parse(string);
-        std::cout << ">>> " << json.dump() << std::endl;
-
-        this->ReceiveDelegateMessageAsync(new Messaging::SocketMessage(ptr, json));
-    }
-    catch (...) {
-        ;
-    }
-}
-
-void BaseEnvironment::ReceiveDelegateMessageToSocket(std::weak_ptr<void> ptr, Toolbox::Messaging::IAsynchMessage * message)
-{
-    if (this->SocketMan) {
-        std::stringstream ss;
-        if (Toolbox::Messaging::IAsynchMessage::StateType::IsOK(message->State)) {
-            ss << "{ \"Result\" : \"OK\", \"Reply\" : " << message->Response.dump() << "}";
-        }
-        else {
-            ss << "{ \"Result\" : \"Failed\", \"Reply\" : " << message->Response.dump() << "}";
-        }
-
-        this->SocketMan->MessageSendImmediate(ptr, ss.str());
-    }
-    else {
-        ;
-    }
-}
-
-void BaseEnvironment::Run()
+void BaseEnvironment::run_with_current_thread()
 {
     using cout = BlackRoot::Util::Cout;
 
-    this->InternalInitStats();
+    this->internal_init_stats();
 
-    this->InternalSetupRelayMap();
-
-    cout{} << "[Environment] Running" << std::endl;
-
-    this->InternalMessageLoop();
-
-    cout{} << "[Environment] Closing" << std::endl;
-}
-
-void BaseEnvironment::Close()
-{
-    this->CurrentState = StateType::ShouldClose;
+    cout{} << "~*~*~ Environment Running ~*~*~" << std::endl;
     
-    std::unique_lock<std::mutex> lk(this->MessageWaitMutex);
-    this->MessageCV.notify_all();
+    this->Message_Nexus->start_accepting_threads();
+    while (!this->internal_get_thread_should_interrupt()) {
+        this->Message_Nexus->await_message_and_handle();
+    }
+
+    cout{} << "~*~*~ Environment Closing ~*~*~" << std::endl;
 }
 
-void BaseEnvironment::SetBootDir(FilePath path)
+void BaseEnvironment::async_close()
 {
-    this->EnvProps.BootDir = fs::canonical(path);
+    this->Current_State = StateType::should_close;
+    this->Message_Nexus->stop_accepting_threads_and_return();
 }
 
-void BaseEnvironment::SetRefDir(FilePath path)
+void BaseEnvironment::internal_init_stats()
+{
+    this->Base_Stats.Start_Time     = std::chrono::high_resolution_clock::now();
+}
+
+void BaseEnvironment::internal_unload_all()
+{
+    if (this->Logman) {
+        this->Logman->deinitialise({});
+    }
+    if (this->Socketman) {
+        this->Socketman->deinitialise_and_wait({});
+    }
+    
+    this->Simple_Relay.Call_Map.erase("log");
+    this->Simple_Relay.Call_Map.erase("sock");
+}
+
+void BaseEnvironment::create_logman()
+{
+    using namespace std::placeholders;
+
+    DbAssertFatal(nullptr == this->Logman);
+
+    this->Logman = this->internal_allocate_logman();    
+    this->Logman->initialise({});
+
+    this->Simple_Relay.Call_Map["log"] = std::bind(&Core::ILogman::rmr_handle_message_immediate, this->Logman, _1);
+}
+
+void BaseEnvironment::create_socketman()
+{
+    using namespace std::placeholders;
+
+    DbAssertFatal(nullptr == this->Socketman);
+
+    this->Socketman = this->internal_allocate_socketman();
+    this->Socketman->initialise({});
+
+        // We assume that socketman should route its en passant
+        // messages to us, so set up the conduit
+
+    Conduits::BaseNexus::InfoFunc info_func =
+        [this](Conduits::Raw::ConduitRef, const Conduits::ConduitUpdateInfo)
+    {
+    };
+    Conduits::BaseNexus::MessageFunc message_message =
+        [this](Conduits::Raw::ConduitRef, Conduits::Raw::IRelayMessage * msg)
+    {
+        this->rmr_handle_message_immediate_and_release(msg);
+    };
+
+    auto id = this->Message_Nexus->manual_open_conduit_to(this->Socketman->get_en_passant_nexus(), info_func, message_message);
+    this->Socketman->connect_en_passant_conduit(id.second);
+
+    this->Simple_Relay.Call_Map["sock"] = std::bind(&Core::ISocketman::rmr_handle_message_immediate, this->Socketman, _1);
+}
+
+    //  Settings
+    // --------------------
+
+void BaseEnvironment::set_boot_dir(FilePath path)
+{
+    this->Env_Props.Boot_Dir = fs::canonical(path);
+}
+
+void BaseEnvironment::set_ref_dir(FilePath path)
 {
     using cout = BlackRoot::Util::Cout;
 
+        // Replace {boot} with the boot path
     auto str = path.string();
-
     std::size_t pos;
     while (std::string::npos != (pos = str.find("{boot}"))) {
-        str.replace(str.begin() + pos, str.begin() + pos + 6, this->EnvProps.BootDir.string());
+        str.replace(str.begin() + pos, str.begin() + pos + 6, this->Env_Props.Boot_Dir.string());
     }
 
-    this->EnvProps.ReferenceDir = fs::canonical(str);
+        // Update our dir
+    this->Env_Props.Reference_Dir = fs::canonical(str);
     
-    cout{} << "Env: Reference dir is now" << std::endl << " " << this->EnvProps.ReferenceDir << std::endl;
+    cout{} << "Env: Reference dir is now" << std::endl << " " << this->Env_Props.Reference_Dir << std::endl;
 }
 
-BaseEnvironment::FilePath BaseEnvironment::GetRefDir()
+    //  Typed
+    // --------------------
+
+Toolbox::Core::ILogman * BaseEnvironment::internal_allocate_logman()
 {
-    return this->EnvProps.ReferenceDir;
+    return new Toolbox::Base::Logman;
 }
 
-void BaseEnvironment::InternalInitStats()
+Toolbox::Core::ISocketman * BaseEnvironment::internal_allocate_socketman()
 {
-    this->BaseStats.StartTime = std::chrono::high_resolution_clock::now();
+    return new Toolbox::Base::Socketman;
 }
 
-void BaseEnvironment::InternalCompileStats(BlackRoot::Format::JSON & json)
+    //  Util
+    // --------------------
+
+bool BaseEnvironment::internal_get_thread_should_interrupt()
 {
-    auto curTime = std::chrono::high_resolution_clock::now();
+    return this->Current_State != StateType::running;
+}
 
-    json["Uptime"] = int(std::chrono::duration_cast<std::chrono::milliseconds>(curTime - this->BaseStats.StartTime).count());
-
+void BaseEnvironment::internal_compile_stats(JSON & json)
+{
     BlackRoot::Format::JSON & Managers = json["Managers"];
-    Managers["SocketMan"] = this->SocketMan    ? "Loaded" : "Not Loaded";
-    Managers["LogMan"]    = this->LogMan       ? "Loaded" : "Not Loaded";
-}
-
-void BaseEnvironment::_setRefDir(Toolbox::Messaging::IAsynchMessage * msg)
-{
-    std::string s = msg->Message.begin().value();
-
-    this->SetRefDir(s);
+    Managers["logman"]    = this->Logman    ? "Loaded" : "Not Loaded";
+    Managers["socketman"] = this->Socketman ? "Loaded" : "Not Loaded";
     
-    std::stringstream ss;
-    ss << "Env: Reference directory is now '" << this->EnvProps.ReferenceDir << "'";
-
-    msg->Response = { ss.str() };
-    msg->SetOK();
+    auto cur_time = std::chrono::high_resolution_clock::now();
+    json["uptime"] = int(std::chrono::duration_cast<std::chrono::milliseconds>(cur_time - this->Base_Stats.Start_Time).count());
 }
 
-void BaseEnvironment::_stats(Toolbox::Messaging::IAsynchMessage * msg)
+bool BaseEnvironment::get_is_running()
 {
-    BlackRoot::Format::JSON ret;
-    this->InternalCompileStats(ret);
-    msg->Response = ret;
-
-    msg->SetOK();
+    return this->Current_State == StateType::running;
 }
 
-void BaseEnvironment::_ping(Toolbox::Messaging::IAsynchMessage * msg)
+BaseEnvironment::FilePath BaseEnvironment::get_ref_dir()
 {
-    std::cout << '\a' << "(pong)" << std::endl;
-
-    msg->Response = { "Pong" };
-    msg->SetOK();
+    return this->Env_Props.Reference_Dir;
 }
 
-void BaseEnvironment::_close(Toolbox::Messaging::IAsynchMessage * msg)
-{
-    msg->Response = { "Closing" };
-    msg->SetOK();
+    //  HTML
+    // --------------------
 
-    this->Close();
-}
-
-void BaseEnvironment::CreateSocketMan()
-{
-    Toolbox::Messaging::JSON param;
-
-    this->SocketMan = this->AllocateSocketMan();
-    this->SocketMan->Initialise( &param );
-}
-
-void BaseEnvironment::_createSocketMan(Toolbox::Messaging::IAsynchMessage * msg)
-{
-    if (this->SocketMan) {
-        msg->Response = { "SocketMan already exists" };
-        msg->SetFailed();
-        return;
-    }
-
-    msg->Response = { "Creating SocketMan" };
-    msg->SetOK();
-
-    this->CreateSocketMan();
-}
-
-void BaseEnvironment::_printCodeCredits(Toolbox::Messaging::IAsynchMessage * msg)
-{
-    msg->Response = { BlackRoot::Repo::VersionRegistry::GetBootString() };
-    msg->SetOK();
-}
-
-void BaseEnvironment::_http(Toolbox::Messaging::IAsynchMessage * msg)
+void BaseEnvironment::savvy_handle_http(const JSON httpRequest, JSON & httpReply, std::string & outBody)
 {
     std::stringstream ss;
-
-    auto registry = BlackRoot::Repo::VersionRegistry::GetRegistry();
-
-    auto mainProj = registry->GetMainProjectVersion();
+    
+    const auto & class_name = this->internal_get_rmr_class_name();
+    auto registry  = BlackRoot::Repo::VersionRegistry::GetRegistry();
+    auto main_proj = registry->GetMainProjectVersion();
 
 	ss << "<!doctype html>" << std::endl
 		<< "<html>" << std::endl
 		<< " <head>" << std::endl
-		<< "  <title>" << mainProj.Name << " - Base Environment</title>" << std::endl
+		<< "  <title>" << main_proj.Name << " - Base Environment</title>" << std::endl
 		<< " </head>" << std::endl
 		<< " <body>" << std::endl
-		<< "  <h1>" << mainProj.Name << "</h1>" << std::endl
-		<< "  <p>" << mainProj.Version << "<br/>" << mainProj.BuildTool << "</p><p>" << std::endl;
-    
-        // Print loaded module links
-    bool printedList = false;
-    for (auto & it : this->MessageRelay.RelayMap) {
-        if (it.first.length() == 0)
-            continue;
-        if (printedList) {
-            ss << " - ";
-        }
-		ss << "  <a href=\"" << it.first << "\">" << it.first << "</a>" << std::endl;
-        printedList = true;
-    }
-	ss << "</p>" << std::endl;
+		<< "  <h1>" << main_proj.Name << "</h1>" << std::endl
+		<< "  <p>" << main_proj.Version << "<br/>" << main_proj.BuildTool << "</p>" << std::endl
+		<< "  <h1>" << class_name << " (base relay)</h1>" << std::endl
+		<< "  <p>" << this->html_create_action_relay_string() << "</p>" << std::endl;
 
         // Print contribution and version strings
     std::string version;
@@ -343,21 +249,91 @@ void BaseEnvironment::_http(Toolbox::Messaging::IAsynchMessage * msg)
     ss  << " </body>" << std::endl
 		<< "</html>";
 
-    msg->Response = { { "http", ss.str() } };
-    msg->SetOK();
+    outBody = ss.str();
 }
 
-Toolbox::Core::ILogMan * BaseEnvironment::AllocateLogMan()
+    //  Messages
+    // --------------------
+
+void BaseEnvironment::async_receive_message(Conduits::Raw::IRelayMessage * msg)
 {
-    return new Toolbox::Base::LogMan;
+    this->Message_Nexus->async_add_ad_hoc_message(msg);
 }
 
-Toolbox::Core::ISocketMan * BaseEnvironment::AllocateSocketMan()
+void BaseEnvironment::_create_logman(Conduits::Raw::IRelayMessage * msg) noexcept
 {
-    return new Toolbox::Base::SocketMan;
+    this->savvy_try_wrap(msg, [&] {
+        DbAssertMsgFatal(!this->Logman, "Logman already exists");
+        this->create_logman();
+        msg->set_OK();
+    });
 }
 
-bool BaseEnvironment::IsRunning()
+void BaseEnvironment::_create_socketman(Conduits::Raw::IRelayMessage * msg) noexcept
 {
-    return this->CurrentState == StateType::Running;
+    this->savvy_try_wrap(msg, [&] {
+        DbAssertMsgFatal(!this->Socketman, "Socketman already exists");
+        this->create_socketman();
+        msg->set_OK();
+    });
+}
+
+void BaseEnvironment::_stats(Conduits::Raw::IRelayMessage * msg) noexcept
+{
+    this->savvy_try_wrap_write_json(msg, 0, [&] {
+        JSON ret;
+        this->internal_compile_stats(ret);
+        msg->set_OK();
+        return ret;
+    });
+}
+
+void BaseEnvironment::_code_credits(Conduits::Raw::IRelayMessage * msg) noexcept
+{
+    this->savvy_try_wrap_write_json(msg, 0, [&] {
+        JSON ret = { BlackRoot::Repo::VersionRegistry::GetBootString() };
+        msg->set_OK();
+        return ret;
+    });
+}
+
+void BaseEnvironment::_set_ref_dir(Conduits::Raw::IRelayMessage * msg) noexcept
+{
+    using cout = BlackRoot::Util::Cout;
+
+    this->savvy_try_wrap_read_json(msg, 0, [&](JSON json) {
+        auto dir = Toolbox::Core::Get_Environment()->get_ref_dir();
+        if (json.is_object()) {
+            json = json["path"];
+        }
+        DbAssertMsgFatal(json.is_string(), "Malformed JSON: cannot get path");
+        
+        this->set_ref_dir(json.get<JSON::string_t>());
+
+        std::string rt = "Ref dir has been set to ";
+        rt += this->get_ref_dir().string();
+
+        msg->set_response_string_with_copy(rt.c_str());
+        msg->set_OK();
+    });
+}
+
+void BaseEnvironment::_ping(Conduits::Raw::IRelayMessage * msg) noexcept
+{
+    using cout = BlackRoot::Util::Cout;
+    cout{} << '\a' << "(pong)" << std::endl;
+
+    this->savvy_try_wrap_write_json(msg, 0, [&] {
+        JSON ret = { "pong" };
+        msg->set_OK();
+        return ret;
+    });
+}
+
+void BaseEnvironment::_close(Conduits::Raw::IRelayMessage * msg) noexcept
+{
+    using cout = BlackRoot::Util::Cout;
+    
+    this->async_close();
+    msg->set_OK();
 }

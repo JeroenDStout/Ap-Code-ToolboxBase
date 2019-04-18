@@ -7,16 +7,16 @@
 namespace Toolbox {
 namespace Core {
 
-	static IEnvironment * GlobalEnvironment = nullptr;
+	static IEnvironment * Global_Environment = nullptr;
 
-	IEnvironment * GetEnvironment()
+	IEnvironment * Get_Environment()
 	{
-		return GlobalEnvironment;
+		return Global_Environment;
 	}
 
-	void SetEnvironment(IEnvironment *manager)
+	void Set_Environment(IEnvironment *manager)
 	{
-		GlobalEnvironment = manager;
+		Global_Environment = manager;
 	}
 
 }
@@ -26,6 +26,6 @@ using namespace Toolbox::Core;
 
 IEnvironment::IEnvironment()
 {
-    this->LogMan        = nullptr;
-    this->SocketMan     = nullptr;
+    this->Logman    = nullptr;
+    this->Socketman = nullptr;
 }

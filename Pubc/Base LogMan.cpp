@@ -3,14 +3,22 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "ToolboxBase/Pubc/Base Environment.h"
-#include "ToolboxBase/Pubc/Base LogMan.h"
+#include "ToolboxBase/Pubc/Base Logman.h"
 
 using namespace Toolbox::Base;
 
-void LogMan::Initialise(BlackRoot::Format::JSON & param)
+    //  Relay message receiver
+    // --------------------
+
+CON_RMR_DEFINE_CLASS(Logman);
+
+    //  Setup
+    // --------------------
+
+void Logman::initialise(const JSON)
 {
 }
 
-void LogMan::Deinitialise(BlackRoot::Format::JSON & param)
+void Logman::deinitialise(const JSON)
 {
 }

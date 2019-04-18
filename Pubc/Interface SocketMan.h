@@ -4,20 +4,25 @@
 
 #pragma once
 
-#include "BlackRoot\Pubc\JSON.h"
-#include "ToolboxBase/Pubc\Interface Messages.h"
+#include "Conduits/Pubc/Interface Conduit.h"
+
+#include "BlackRoot/Pubc/JSON.h"
 
 namespace Toolbox {
 namespace Core {
+    
+	class ISocketman : public virtual Conduits::IRelayMessageReceiver {
+    public:
+        using JSON  = BlackRoot::Format::JSON;
+        using Nexus =  Conduits::Raw::INexus;
 
-	class ISocketMan {
-	public:
-        virtual ~ISocketMan() { ; }
+        virtual ~ISocketman() { ; }
 
-        virtual void Initialise(BlackRoot::Format::JSON * param) = 0;
-        virtual void Deinitialise(BlackRoot::Format::JSON * param) = 0;
-
-        virtual void MessageSendImmediate(std::weak_ptr<void>, std::string) = 0;
+        virtual void initialise(const JSON param) = 0;
+        virtual void deinitialise_and_wait(const JSON param) = 0;
+        
+        virtual Nexus * get_en_passant_nexus() = 0;
+        virtual void    connect_en_passant_conduit(Conduits::Raw::ConduitRef) = 0;
 	};
 
 }

@@ -13,26 +13,30 @@ namespace Toolbox {
 namespace Util {
 
     struct EnvironmentBootstrap {
-        BlackRoot::IO::FilePath     BootPath;
+        using JSON   = BlackRoot::Format::JSON;
+        using Path   = BlackRoot::IO::FilePath;
+        using Stream = BlackRoot::IO::IFileStream;
+        using Env    = Toolbox::Core::IEnvironment;
 
-        Toolbox::Core::IEnvironment * Environment;
+        Path  Boot_Path;
+        Env   *Environment;
 
         EnvironmentBootstrap()
         : Environment(nullptr) {
         }
 
-        void SetupEnvironment(Toolbox::Core::IEnvironment*);
+        void setup_environment(Env*);
 
-        bool ExecuteFromFilePath(const BlackRoot::IO::FilePath);
-        bool ExecuteFromFile(BlackRoot::IO::IFileStream*);
+        bool execute_from_file_path(const Path);
+        bool execute_from_file(Stream*);
 
-        bool ExecuteFromBootFile() {
-            if (BootPath.empty())
+        bool execute_from_boot_file() {
+            if (Boot_Path.empty())
                 return false;
-            return this->ExecuteFromFilePath(BootPath);
+            return this->execute_from_file_path(Boot_Path);
         }
 
-        bool ExecuteFromJSON(BlackRoot::Format::JSON);
+        bool execute_from_json(const JSON);
     };
 
 }

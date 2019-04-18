@@ -134,28 +134,23 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="../Pubc/Base LogMan.h" />
+    <ClInclude Include="..\Pubc\Base Logman.h" />
     <ClInclude Include="../Pubc/Base Environment.h" />
-    <ClInclude Include="../Pubc/Base SocketMan.h" />
+    <ClInclude Include="..\Pubc\Base Socketman.h" />
     <ClInclude Include="../Pubc/Environment Bootstrap.h" />
-    <ClInclude Include="../Pubc/Interface Messages.h" />
-    <ClInclude Include="../Pubc/Interface SocketMan.h" />
-    <ClInclude Include="../Pubc/Interface LogMan.h" />
+    <ClInclude Include="..\Pubc\Interface Socketman.h" />
+    <ClInclude Include="..\Pubc\Interface Logman.h" />
     <ClInclude Include="../Pubc/Interface Environment.h" />
-    <ClInclude Include="../Pubc/Base Messages.h" />
-    <ClInclude Include="../Pubc/Message Relay.h" />
     <ClInclude Include="..\Pubc\Entry.h" />
     <ClInclude Include="..\Pubc\Version.h" />
     <ClInclude Include="..\Pubc\Register.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="../Pubc/Base LogMan.cpp" />
+    <ClCompile Include="..\Pubc\Base Logman.cpp" />
     <ClCompile Include="../Pubc/Base Environment.cpp" />
-    <ClCompile Include="../Pubc/Base SocketMan.cpp" />
+    <ClCompile Include="..\Pubc\Base Socketman.cpp" />
     <ClCompile Include="../Pubc/Environment Bootstrap.cpp" />
     <ClCompile Include="../Pubc/Interface Environment.cpp" />
-    <ClCompile Include="../Pubc/Base Messages.cpp" />
-    <ClCompile Include="../Pubc/Message Relay.cpp" />
     <ClCompile Include="..\Pubc\Entry.cpp" />
     <ClCompile Include="..\Pubc\Version.cpp" />
   </ItemGroup>

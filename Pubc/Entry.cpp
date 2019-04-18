@@ -16,7 +16,7 @@ int Toolbox::Core::DefaultStart(StartupFunction f, int argc, char* argv[])
 {
     Toolbox::Util::EnvironmentBootstrap bootstrap;
 
-    bootstrap.BootPath = fs::current_path();
+    bootstrap.Boot_Path = fs::current_path();
 
     std::string bootPathAppend = "";
 
@@ -69,15 +69,15 @@ int Toolbox::Core::DefaultStart(StartupFunction f, int argc, char* argv[])
     if (bootPathAppend.length() > 0) {
         BlackRoot::IO::FilePath append = bootPathAppend;
         if (append.is_relative()) {
-            bootstrap.BootPath /= bootPathAppend;
+            bootstrap.Boot_Path /= bootPathAppend;
         }
         else {
-            bootstrap.BootPath = bootPathAppend;
+            bootstrap.Boot_Path = bootPathAppend;
         }
-        bootstrap.BootPath = fs::canonical(bootstrap.BootPath);
+        bootstrap.Boot_Path = fs::canonical(bootstrap.Boot_Path);
     }
     else {
-        bootstrap.BootPath = "";
+        bootstrap.Boot_Path = "";
     }
     
 #ifdef _WIN32

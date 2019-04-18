@@ -7,47 +7,54 @@
 #include "BlackRoot/Pubc/JSON.h"
 #include "BlackRoot/Pubc/Files.h"
 
-#include "ToolboxBase/Pubc\Interface Messages.h"
+#include "Conduits/Pubc/Interface Raw Message.h"
 
 namespace Toolbox {
 namespace Core {
 
 	class IEnvironment;
-	class ISocketMan;
-	class ILogMan;
+	class ISocketman;
+	class ILogman;
 
-	IEnvironment * GetEnvironment();
-	void SetEnvironment(IEnvironment *);
+	IEnvironment * Get_Environment();
+	void Set_Environment(IEnvironment *);
 
-	class IEnvironment : public virtual Messaging::IMessageReceiver {
+	class IEnvironment {
 	public:
         using FilePath = BlackRoot::IO::FilePath;
 
-		ILogMan		*LogMan;
-		ISocketMan	*SocketMan;
+		ILogman		*Logman;
+		ISocketman	*Socketman;
 
         IEnvironment();
         virtual ~IEnvironment() { ; }
 
-        virtual void Run() = 0;
-        virtual void Close() = 0;
+            // Setup
 
-        virtual void ReceiveDelegateMessageFromSocket(std::weak_ptr<void>, std::string) = 0;
-        virtual void ReceiveDelegateMessageToSocket(std::weak_ptr<void>, Messaging::IAsynchMessage *) = 0;
+        virtual void set_boot_dir(FilePath) = 0;
+        virtual void set_ref_dir(FilePath) = 0;
+        
+            // Control
 
-        virtual void ReceiveDelegateMessageAsync(Messaging::IAsynchMessage*) = 0;
+        virtual void run_with_current_thread() = 0;
+        virtual void async_close() = 0;
 
-        virtual bool IsRunning() = 0;
+        virtual void async_receive_message(Conduits::Raw::IRelayMessage *) = 0;
 
-        virtual void UnloadAll() = 0;
+            // Util
 
-        virtual void SetBootDir(FilePath) = 0;
-        virtual void SetRefDir(FilePath) = 0;
+        virtual bool get_is_running() = 0;
 
-        virtual FilePath GetRefDir() = 0;
+            // Info
 
-        virtual ILogMan *    AllocateLogMan() = 0;
-        virtual ISocketMan * AllocateSocketMan() = 0;
+        virtual FilePath get_ref_dir() = 0;
+
+        /// ???
+
+        //virtual void ReceiveDelegateMessageFromSocket(std::weak_ptr<void>, std::string) = 0;
+        //virtual void ReceiveDelegateMessageToSocket(std::weak_ptr<void>, Messaging::IAsynchMessage *) = 0;
+
+        //virtual void ReceiveDelegateMessageAsync(Messaging::IAsynchMessage*) = 0;
 	};
 
 }

@@ -1,109 +1,143 @@
-#pragma once
-
-#include <atomic>
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+#pragma once
+
 #include <condition_variable>
 #include <chrono>
 #include <vector>
+#include <atomic>
 
 #include "BlackRoot/Pubc/JSON.h"
 
+#include "Conduits/Pubc/Savvy Relay Receiver.h"
+#include "Conduits/Pubc/Simple Relay Dir.h"
+#include "Conduits/Pubc/Base Nexus.h"
+
 #include "ToolboxBase/Pubc/Interface Environment.h"
-#include "ToolboxBase/Pubc/Base Messages.h"
-#include "ToolboxBase/Pubc/Message Relay.h"
 
 namespace Toolbox {
 namespace Base {
 
-    class SocketMan;
-    class LogMan;
+    class Socketman;
+    class Logman;
 
-    class BaseEnvironment : public Core::IEnvironment, public Messaging::BaseMessageReceiver {
-    public:
-        TB_MESSAGES_DECLARE_RECEIVER(BaseEnvironment, Toolbox::Messaging::BaseMessageReceiver);
+    class BaseEnvironment : public Core::IEnvironment, public Conduits::SavvyRelayMessageReceiver {
+        CON_RMR_DECLARE_CLASS(BaseEnvironment, SavvyRelayMessageReceiver);
+
+        using JSON      = BlackRoot::Format::JSON;
+        using FilePath  = BlackRoot::IO::FilePath;
 
     protected:
         struct StateType {
             typedef unsigned char Type;
             enum : Type {
-                Running     = 0,
-                ShouldClose = 1,
-                Closed      = 2
+                running       = 0,
+                should_close  = 1,
+                closed        = 2
             };
         };
 
         struct __EnvProps {
-            FilePath     BootDir;
-            FilePath     ReferenceDir;
-        } EnvProps;
+            FilePath     Boot_Dir;
+            FilePath     Reference_Dir;
+        } Env_Props;
 
         struct __BaseStats {
-            std::chrono::high_resolution_clock::time_point  StartTime;
-        } BaseStats;
+            std::chrono::high_resolution_clock::time_point  Start_Time;
+        } Base_Stats;
+
+        Conduits::NexusHolder<>       Message_Nexus;
+        std::atomic<StateType::Type>  Current_State;
+
+        Conduits::SimpleRelayDir      Simple_Relay;
+        CON_RMR_USE_DIRECT_RELAY(Simple_Relay);
         
-        Toolbox::Messaging::MessageRelayAsDir   MessageRelay;
+    protected:
+            // Control
+        
+        virtual void internal_init_stats();
 
-        std::atomic<StateType::Type>  CurrentState;
+            // Typed
 
-        std::mutex                    MessageCueMutex;
-        std::vector<Messaging::IAsynchMessage*> MessageCue;
-
-        std::mutex                    MessageWaitMutex;
-        std::condition_variable       MessageCV;
+        virtual Core::ILogman *    internal_allocate_logman();
+        virtual Core::ISocketman * internal_allocate_socketman();
 
     public:
-        virtual void InternalMessageLoop();
-        virtual void InternalHandleMessage(Messaging::IAsynchMessage*);
+        //virtual void InternalMessageLoop();
+        //virtual void InternalHandleMessage(Messaging::IAsynchMessage*);
 
-        virtual void InternalSetupRelayMap();
+        //virtual void InternalSetupRelayMap();
+        //
+        //virtual void InternalInitStats();
+        //virtual void InternalCompileStats(BlackRoot::Format::JSON &);
         
-        virtual void InternalInitStats();
-        virtual void InternalCompileStats(BlackRoot::Format::JSON &);
+     //   virtual void internal_setup_relay_map();
+        virtual void internal_compile_stats(JSON &);
 
-        bool InternalThreadsShouldBeAwake();
+        bool internal_get_thread_should_interrupt();
+
+        //
+        //void InternalMessageRelayToNone(std::string, Messaging::IAsynchMessage*);
+        //void InternalMessageSendToNone(std::string, Messaging::IAsynchMessage*);
+
+        //void InternalMessageSendToEnv(std::string, Messaging::IAsynchMessage*);
         
-        void InternalMessageRelayToNone(std::string, Messaging::IAsynchMessage*);
-        void InternalMessageSendToNone(std::string, Messaging::IAsynchMessage*);
-
-        void InternalMessageSendToEnv(std::string, Messaging::IAsynchMessage*);
-
     public:
         BaseEnvironment();
         ~BaseEnvironment();
         
-        void ReceiveDelegateMessageAsync(Messaging::IAsynchMessage*) override;
-        void ReceiveDelegateMessageFromSocket(std::weak_ptr<void>, std::string) override;
-        void ReceiveDelegateMessageToSocket(std::weak_ptr<void>, Messaging::IAsynchMessage *) override;
+        //void ReceiveDelegateMessageAsync(Messaging::IAsynchMessage*) override;
+        //void ReceiveDelegateMessageFromSocket(std::weak_ptr<void>, std::string) override;
+        //void ReceiveDelegateMessageToSocket(std::weak_ptr<void>, Messaging::IAsynchMessage *) override;
         
-        void Run() override;
-        void Close() override;
+            // Setup
 
-        bool IsRunning() override;
-
-        void UnloadAll() override;
+        void set_boot_dir(FilePath) override;
+        void set_ref_dir(FilePath) override;
         
-        void SetBootDir(FilePath) override;
-        void SetRefDir(FilePath) override;
+            // Control
 
-        FilePath GetRefDir() override;
+        void run_with_current_thread() override;
+        void async_close() override;
 
-        TB_MESSAGES_DECLARE_MEMBER_FUNCTION(ping);
-        TB_MESSAGES_DECLARE_MEMBER_FUNCTION(stats);
-        TB_MESSAGES_DECLARE_MEMBER_FUNCTION(setRefDir);
-        TB_MESSAGES_DECLARE_MEMBER_FUNCTION(createLogMan);
-        TB_MESSAGES_DECLARE_MEMBER_FUNCTION(createSocketMan);
-        TB_MESSAGES_DECLARE_MEMBER_FUNCTION(close);
-        TB_MESSAGES_DECLARE_MEMBER_FUNCTION(printCodeCredits);
-        TB_MESSAGES_DECLARE_MEMBER_FUNCTION(http);
+        void create_logman();
+        void create_socketman();
 
-        Core::ILogMan *    AllocateLogMan() override;
-        Core::ISocketMan * AllocateSocketMan() override;
+        virtual void internal_unload_all();
+        
+            // Util
 
-        void CreateLogMan();
-        void CreateSocketMan();
+        bool get_is_running() override;
+        void async_receive_message(Conduits::Raw::IRelayMessage *) override;
+        
+            // Http
+
+        void savvy_handle_http(const JSON httpRequest, JSON & httpReply, std::string & outBody);
+
+            // Info
+
+        FilePath get_ref_dir() override;
+        
+            // Relay Setup
+
+        CON_RMR_DECLARE_FUNC(set_ref_dir);
+
+            // Relay Data
+
+        CON_RMR_DECLARE_FUNC(stats);
+        CON_RMR_DECLARE_FUNC(code_credits);
+
+            // Relay Control
+
+        CON_RMR_DECLARE_FUNC(create_logman);
+        CON_RMR_DECLARE_FUNC(create_socketman);
+        CON_RMR_DECLARE_FUNC(close);
+
+            // Relay Util
+
+        CON_RMR_DECLARE_FUNC(ping);
     };
 
 }

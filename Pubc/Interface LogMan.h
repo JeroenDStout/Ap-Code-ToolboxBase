@@ -4,17 +4,21 @@
 
 #pragma once
 
-#include "BlackRoot\Pubc\JSON.h"
+#include "BlackRoot/Pubc/JSON.h"
+
+#include "Conduits/Pubc/Interface Relay Receiver.h"
 
 namespace Toolbox {
 namespace Core {
 
-	class ILogMan {
+	class ILogman : public virtual Conduits::IRelayMessageReceiver {
 	public:
-        virtual ~ILogMan() { ; }
+        using JSON = BlackRoot::Format::JSON;
 
-        virtual void Initialise(BlackRoot::Format::JSON &) = 0;
-        virtual void Deinitialise(BlackRoot::Format::JSON &) = 0;
+        virtual ~ILogman() { ; }
+
+        virtual void initialise(const JSON) = 0;
+        virtual void deinitialise(const JSON) = 0;
 	};
 
 }

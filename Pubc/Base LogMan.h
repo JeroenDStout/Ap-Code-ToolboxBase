@@ -4,17 +4,23 @@
 
 #pragma once
 
-#include "ToolboxBase/Pubc/Interface LogMan.h"
+#include "Conduits/Pubc/Savvy Relay Receiver.h"
+
+#include "ToolboxBase/Pubc/Interface Logman.h"
 
 namespace Toolbox {
 namespace Base {
 
-	class LogMan : public Toolbox::Core::ILogMan {
-	public:
-        ~LogMan() override { ; }
+	class Logman : public Toolbox::Core::ILogman, public Conduits::SavvyRelayMessageReceiver {
+        CON_RMR_DECLARE_CLASS(Logman, ILogman);
 
-        void Initialise(BlackRoot::Format::JSON & param) override;
-        void Deinitialise(BlackRoot::Format::JSON & param) override;
+        using JSON = BlackRoot::Format::JSON;
+
+	public:
+        ~Logman() override { ; }
+
+        void initialise(const JSON param) override;
+        void deinitialise(const JSON param) override;
 	};
 
 }

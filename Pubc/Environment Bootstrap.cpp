@@ -2,50 +2,55 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+#include "BlackRoot/Pubc/Assert.h"
 #include "BlackRoot/Pubc/Threaded IO Stream.h"
 #include "BlackRoot/Pubc/JSON Merge.h"
 #include "BlackRoot/Pubc/Files Types.h"
 #include "BlackRoot/Pubc/Sys Path.h"
 
-#include "ToolboxBase/Pubc/Base Messages.h"
+#include "Conduits/Pubc/Interface Raw Message.h"
+#include "Conduits/Pubc/Await Message.h"
+#include "Conduits/Pubc/Path Tools.h"
+
 #include "ToolboxBase/Pubc/Environment Bootstrap.h"
 
 using namespace Toolbox::Util;
 
-void EnvironmentBootstrap::SetupEnvironment(Toolbox::Core::IEnvironment * env) {
+void EnvironmentBootstrap::setup_environment(Env * env) {
     this->Environment = env;
 
+        // Our boot dir is the boot file directory
     std::string bootDir = "";
-    if (!this->BootPath.empty()) {
-        bootDir = this->BootPath.string();
+    if (!this->Boot_Path.empty()) {
+        bootDir = this->Boot_Path.parent_path().string();
     }
 
-    auto pos = bootDir.find_last_of(BlackRoot::System::DirSeperator);
-    if (pos != std::string::npos) {
-        bootDir = bootDir.substr(0, pos);
-    }
-    this->Environment->SetBootDir(bootDir);
-    this->Environment->SetRefDir("{boot}");
+        // Set up the environment; {boot} is a replacement
+        // for the boot dir
+    this->Environment->set_boot_dir(bootDir);
+    this->Environment->set_ref_dir("{boot}");
 }
 
-bool EnvironmentBootstrap::ExecuteFromFilePath(const BlackRoot::IO::FilePath path) {
+bool EnvironmentBootstrap::execute_from_file_path(const Path path) {
     namespace IO   = BlackRoot::IO;
     namespace Mode = BlackRoot::IO::FileMode;
     using     cout = BlackRoot::Util::Cout;
 
     IO::BaseFileSource fm("");
 
+        // Check if file actually exists
     if (!fm.Exists(path)) {
         cout{} << std::endl << "!! Bootstrap cannot find '" << path << "'!" << std::endl << std::endl;
         return false;
     }
 
     IO::BaseFileSource::FCont contents;
-    Toolbox::Messaging::JSON   jsonCont;
+    JSON jsonCont;
 
+        // Try to read and parse the file
     try {
         contents = fm.ReadFile(path, Mode::OpenInstr{}.Default().Share(Mode::Share::Read));
-        jsonCont = Toolbox::Messaging::JSON::parse(contents);
+        jsonCont = JSON::parse(contents);
     }
     catch (BlackRoot::Debug::Exception * ex) {
         cout{} << "!! Bootstrap error reading" << std::endl << " " << path << std::endl;
@@ -59,32 +64,50 @@ bool EnvironmentBootstrap::ExecuteFromFilePath(const BlackRoot::IO::FilePath pat
     
     cout{} << "Bootstrap loading from" << std::endl << " " << path << std::endl;
     
+        // Merge the JSON and execute
     BlackRoot::Util::JSONMerge merger(&fm, &jsonCont);
     merger.MergeRecursively();
-
-    return this->ExecuteFromJSON(jsonCont);
+    return this->execute_from_json(jsonCont);
 }
 
-bool EnvironmentBootstrap::ExecuteFromJSON(Toolbox::Messaging::JSON json)
+bool EnvironmentBootstrap::execute_from_json(const JSON json)
 { 
     using cout = BlackRoot::Util::Cout;
 
-    for (auto& el1 : json.items()) {
+    for (const auto & el1 : json.items())
+    {
+            // 'Serious' keys break the boot on startup;
+            // in reality most of them will be serious
         if (0 == (el1.key().compare("serious"))) {
-            for (auto& el2 : el1.value().items()) {
-                cout{} <<  "> " << el2.value().dump() << std::endl;
+            DbAssertFatal(el1.value().is_array());
 
-                Toolbox::Messaging::AwaitMessage msg(el2.value());
-                this->Environment->ReceiveDelegateMessageAsync(&msg);
+                // Every key is the path, its object is the values
+                // i.e., { "path/to/object/action" : { "param" : "value" } }
+            for (const auto & el2 : el1.value()) {
+                DbAssertFatal(el2.is_object());
 
-                if (!msg.AwaitSuccess()) {
-                    cout{} << "<## " << msg.Response.dump() << std::endl
+                cout{} <<  "> " << el2.dump() << std::endl;
+
+                    // Create an await message holding our stringified JSON
+                Conduits::BaseAwaitMessage await;
+                await.Path = Conduits::Util::Sanitise_Path(el2.begin().key());
+                await.Message_Segments[0] = el2.begin().value().dump();
+
+                    // Prepare, send, and await; env is running this asynch
+                await.sender_prepare_for_send();
+                this->Environment->async_receive_message(&await);
+                await.sender_await();
+
+                    // If we fail, print a reason and abort startup
+                if (await.Message_State != Conduits::MessageState::ok) {
+                    cout{} << "<## " << await.Response_String << std::endl
                            << "    Error in serious startup!" << std::endl;
                     return false;
                 }
             
-                if (!msg.Response.is_null()) {
-                    cout{} << "< " << msg.Response.dump() << std::endl;
+                    // If there is a meaningful response, print it
+                if (await.Response_String.length() > 0) {
+                    cout{} << "< " << await.Response_String << std::endl;
                 }
             }
         }
