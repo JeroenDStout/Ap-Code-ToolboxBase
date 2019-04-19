@@ -36,7 +36,7 @@ bool EnvironmentBootstrap::execute_from_file_path(const Path path) {
     namespace Mode = BlackRoot::IO::FileMode;
     using     cout = BlackRoot::Util::Cout;
 
-    IO::BaseFileSource fm("");
+    IO::BaseFileSource fm;
 
         // Check if file actually exists
     if (!fm.Exists(path)) {
