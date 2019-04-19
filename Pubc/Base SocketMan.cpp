@@ -143,6 +143,14 @@ public:
         this->socketman->internal_async_handle_http(uri, http_header,
                 [con](JSON header, std::string body)
         {
+            if (header.is_object()) {
+                for (auto & it : header.items()) {
+                    if (!it.value().is_string())
+                        continue;
+                    con->replace_header(it.key(), it.value());
+                }
+            }
+
             con->set_body(body);
             con->set_status(websocketpp::http::status_code::ok);
             con->send_http_response();
