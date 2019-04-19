@@ -77,6 +77,8 @@ namespace Base {
         virtual void internal_compile_stats(JSON &);
 
         bool internal_get_thread_should_interrupt();
+        
+        virtual std::string internal_get_favicon_name() { return ""; }
 
         //
         //void InternalMessageRelayToNone(std::string, Messaging::IAsynchMessage*);

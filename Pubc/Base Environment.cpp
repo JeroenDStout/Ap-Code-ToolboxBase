@@ -9,8 +9,9 @@
 #include "BlackRoot/Pubc/Threaded IO Stream.h"
 #include "BlackRoot/Pubc/Sys Path.h"
 
-#include "ToolboxBase/Pubc/Base Environment.h"
+#include "Conduits/Pubc/File Server.h"
 
+#include "ToolboxBase/Pubc/Base Environment.h"
 #include "ToolboxBase/Pubc/Base Logman.h"
 #include "ToolboxBase/Pubc/Base Socketman.h"
 
@@ -44,6 +45,23 @@ BaseEnvironment::BaseEnvironment()
 
     this->Simple_Relay.Call_Map["env"] = [=](Conduits::Raw::IRelayMessage * msg) {
         return this->rmr_handle_message_immediate(msg);
+    };
+
+    this->Simple_Relay.Call_Map["web"] = [=](Conduits::Raw::IRelayMessage * msg) {
+        BlackRoot::IO::BaseFileSource s;
+        Conduits::Util::HttpFileServer server;
+        server.Inner_Source = &s;
+        server.handle(this->get_ref_dir() / "Web", msg->get_adapting_path(), msg);
+        msg->set_OK();
+        return true;
+    };
+    this->Simple_Relay.Call_Map["favicon.ico"] = [=](Conduits::Raw::IRelayMessage * msg) {
+        BlackRoot::IO::BaseFileSource s;
+        Conduits::Util::HttpFileServer server;
+        server.Inner_Source = &s;
+        server.handle(this->get_ref_dir() / "Web" / this->internal_get_favicon_name(), "", msg);
+        msg->set_OK();
+        return true;
     };
 }
 
