@@ -24,6 +24,7 @@ namespace fs = std::experimental::filesystem;
 CON_RMR_DEFINE_CLASS(BaseEnvironment);
 
 CON_RMR_REGISTER_FUNC(BaseEnvironment, set_ref_dir);
+CON_RMR_REGISTER_FUNC(BaseEnvironment, set_user_doc_dir);
 CON_RMR_REGISTER_FUNC(BaseEnvironment, stats);
 CON_RMR_REGISTER_FUNC(BaseEnvironment, code_credits);
 CON_RMR_REGISTER_FUNC(BaseEnvironment, create_logman);
@@ -164,17 +165,22 @@ void BaseEnvironment::set_ref_dir(FilePath path)
 {
     using cout = BlackRoot::Util::Cout;
 
-        // Replace {boot} with the boot path
-    auto str = path.string();
-    std::size_t pos;
-    while (std::string::npos != (pos = str.find("{boot}"))) {
-        str.replace(str.begin() + pos, str.begin() + pos + 6, this->Env_Props.Boot_Dir.string());
-    }
-
-        // Update our dir
-    this->Env_Props.Reference_Dir = fs::canonical(str);
-    
+    this->Env_Props.Reference_Dir = this->expand_dir(path);
     cout{} << "Env: Reference dir is now" << std::endl << " " << this->Env_Props.Reference_Dir << std::endl;
+
+        // We ensure the path, just to be sure
+    fs::create_directories(this->Env_Props.Reference_Dir);
+}
+
+void BaseEnvironment::set_user_doc_dir(FilePath path)
+{
+    using cout = BlackRoot::Util::Cout;
+
+    this->Env_Props.User_Doc_Dir = this->expand_dir(path);
+    cout{} << "Env: User documents dir is now" << std::endl << " " << this->Env_Props.User_Doc_Dir << std::endl;
+
+        // We ensure the path, just to be sure
+    fs::create_directories(this->Env_Props.User_Doc_Dir);
 }
 
     //  Typed
@@ -208,6 +214,36 @@ void BaseEnvironment::internal_compile_stats(JSON & json)
     json["uptime"] = int(std::chrono::duration_cast<std::chrono::milliseconds>(cur_time - this->Base_Stats.Start_Time).count());
 }
 
+BaseEnvironment::FilePath BaseEnvironment::expand_dir(FilePath path)
+{
+    using cout = BlackRoot::Util::Cout;
+
+        // TODO this is not thread safe with setting changes
+        // TODO use more elegant solution (map) if this gets more complex
+
+    auto str = path.string();
+    std::size_t pos;
+
+        // Replace boot path
+    while (std::string::npos != (pos = str.find("{boot}"))) {
+        str.replace(str.begin() + pos, str.begin() + pos + 6, this->Env_Props.Boot_Dir.string());
+    }
+
+        // Replace reference path
+    while (std::string::npos != (pos = str.find("{ref}"))) {
+        str.replace(str.begin() + pos, str.begin() + pos + 5, this->Env_Props.Reference_Dir.string());
+    }
+
+        // Replace my doc path
+    while (std::string::npos != (pos = str.find("{os-my-doc}"))) {
+        str.replace(str.begin() + pos, str.begin() + pos + 11, BlackRoot::System::GetUserDocumentsPath().string());
+    }
+
+        // Return expanded our dir
+    path = fs::canonical(str);
+    return path;
+}
+
 bool BaseEnvironment::get_is_running()
 {
     return this->Current_State == StateType::running;
@@ -216,6 +252,11 @@ bool BaseEnvironment::get_is_running()
 BaseEnvironment::FilePath BaseEnvironment::get_ref_dir()
 {
     return this->Env_Props.Reference_Dir;
+}
+
+BaseEnvironment::FilePath BaseEnvironment::get_user_doc_dir()
+{
+    return this->Env_Props.User_Doc_Dir;
 }
 
     //  HTML
@@ -330,6 +371,27 @@ void BaseEnvironment::_set_ref_dir(Conduits::Raw::IRelayMessage * msg) noexcept
 
         std::string rt = "Ref dir has been set to ";
         rt += this->get_ref_dir().string();
+
+        msg->set_response_string_with_copy(rt.c_str());
+        msg->set_OK();
+    });
+}
+
+void BaseEnvironment::_set_user_doc_dir(Conduits::Raw::IRelayMessage * msg) noexcept
+{
+    using cout = BlackRoot::Util::Cout;
+
+    this->savvy_try_wrap_read_json(msg, 0, [&](JSON json) {
+        auto dir = Toolbox::Core::Get_Environment()->get_ref_dir();
+        if (json.is_object()) {
+            json = json["path"];
+        }
+        DbAssertMsgFatal(json.is_string(), "Malformed JSON: cannot get path");
+        
+        this->set_user_doc_dir(json.get<JSON::string_t>());
+
+        std::string rt = "User documents dir has been set to ";
+        rt += this->get_user_doc_dir().string();
 
         msg->set_response_string_with_copy(rt.c_str());
         msg->set_OK();

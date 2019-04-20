@@ -42,6 +42,7 @@ namespace Base {
         struct __EnvProps {
             FilePath     Boot_Dir;
             FilePath     Reference_Dir;
+            FilePath     User_Doc_Dir;
         } Env_Props;
 
         struct __BaseStats {
@@ -98,6 +99,7 @@ namespace Base {
 
         void set_boot_dir(FilePath) override;
         void set_ref_dir(FilePath) override;
+        void set_user_doc_dir(FilePath) override;
         
             // Control
 
@@ -113,6 +115,8 @@ namespace Base {
 
         bool get_is_running() override;
         void async_receive_message(Conduits::Raw::IRelayMessage *) override;
+
+        virtual FilePath expand_dir(FilePath);
         
             // Http
 
@@ -121,10 +125,12 @@ namespace Base {
             // Info
 
         FilePath get_ref_dir() override;
+        FilePath get_user_doc_dir() override;
         
             // Relay Setup
 
         CON_RMR_DECLARE_FUNC(set_ref_dir);
+        CON_RMR_DECLARE_FUNC(set_user_doc_dir);
 
             // Relay Data
 
