@@ -113,7 +113,7 @@ void BaseEnvironment::internal_unload_all()
     this->Simple_Relay.Call_Map.erase("sock");
 }
 
-void BaseEnvironment::create_logman()
+void BaseEnvironment::create_logman(const JSON)
 {
     using namespace std::placeholders;
 
@@ -125,14 +125,21 @@ void BaseEnvironment::create_logman()
     this->Simple_Relay.Call_Map["log"] = std::bind(&Core::ILogman::rmr_handle_message_immediate, this->Logman, _1);
 }
 
-void BaseEnvironment::create_socketman()
+void BaseEnvironment::create_socketman(const JSON json)
 {
     using namespace std::placeholders;
 
     DbAssertFatal(nullptr == this->Socketman);
 
+    JSON arg;
+
+    auto it = json.find("port");
+    if (it != json.end()) {
+        arg["port"] = it.value().get<uint16_t>();
+    }
+
     this->Socketman = this->internal_allocate_socketman();
-    this->Socketman->initialise({});
+    this->Socketman->initialise(arg);
 
         // We assume that socketman should route its en passant
         // messages to us, so set up the conduit
@@ -321,18 +328,18 @@ void BaseEnvironment::async_receive_message(Conduits::Raw::IRelayMessage * msg)
 
 void BaseEnvironment::_create_logman(Conduits::Raw::IRelayMessage * msg) noexcept
 {
-    this->savvy_try_wrap(msg, [&] {
+    this->savvy_try_wrap_read_json(msg, 0, [&](JSON json) {
         DbAssertMsgFatal(!this->Logman, "Logman already exists");
-        this->create_logman();
+        this->create_logman(json);
         msg->set_OK();
     });
 }
 
 void BaseEnvironment::_create_socketman(Conduits::Raw::IRelayMessage * msg) noexcept
 {
-    this->savvy_try_wrap(msg, [&] {
+    this->savvy_try_wrap_read_json(msg, 0, [&](JSON json) {
         DbAssertMsgFatal(!this->Socketman, "Socketman already exists");
-        this->create_socketman();
+        this->create_socketman(json);
         msg->set_OK();
     });
 }

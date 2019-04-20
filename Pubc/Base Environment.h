@@ -106,8 +106,8 @@ namespace Base {
         void run_with_current_thread() override;
         void async_close() override;
 
-        void create_logman();
-        void create_socketman();
+        virtual void create_logman(const JSON);
+        virtual void create_socketman(const JSON);
 
         virtual void internal_unload_all();
         
