@@ -174,9 +174,6 @@ void BaseEnvironment::set_ref_dir(FilePath path)
 
     this->Env_Props.Reference_Dir = this->expand_dir(path);
     cout{} << "Env: Reference dir is now" << std::endl << " " << this->Env_Props.Reference_Dir << std::endl;
-
-        // We ensure the path, just to be sure
-    fs::create_directories(this->Env_Props.Reference_Dir);
 }
 
 void BaseEnvironment::set_user_doc_dir(FilePath path)
@@ -186,7 +183,9 @@ void BaseEnvironment::set_user_doc_dir(FilePath path)
     this->Env_Props.User_Doc_Dir = this->expand_dir(path);
     cout{} << "Env: User documents dir is now" << std::endl << " " << this->Env_Props.User_Doc_Dir << std::endl;
 
-        // We ensure the path, just to be sure
+        // We ensure the path, just to be sure, and by design
+        // we should have permission to create directories
+        // in this specific path
     fs::create_directories(this->Env_Props.User_Doc_Dir);
 }
 
