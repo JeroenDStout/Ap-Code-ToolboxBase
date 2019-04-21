@@ -66,34 +66,15 @@ namespace Base {
         virtual Core::ISocketman * internal_allocate_socketman();
 
     public:
-        //virtual void InternalMessageLoop();
-        //virtual void InternalHandleMessage(Messaging::IAsynchMessage*);
-
-        //virtual void InternalSetupRelayMap();
-        //
-        //virtual void InternalInitStats();
-        //virtual void InternalCompileStats(BlackRoot::Format::JSON &);
-        
-     //   virtual void internal_setup_relay_map();
         virtual void internal_compile_stats(JSON &);
 
         bool internal_get_thread_should_interrupt();
         
         virtual std::string internal_get_favicon_name() { return ""; }
-
-        //
-        //void InternalMessageRelayToNone(std::string, Messaging::IAsynchMessage*);
-        //void InternalMessageSendToNone(std::string, Messaging::IAsynchMessage*);
-
-        //void InternalMessageSendToEnv(std::string, Messaging::IAsynchMessage*);
         
     public:
         BaseEnvironment();
         ~BaseEnvironment();
-        
-        //void ReceiveDelegateMessageAsync(Messaging::IAsynchMessage*) override;
-        //void ReceiveDelegateMessageFromSocket(std::weak_ptr<void>, std::string) override;
-        //void ReceiveDelegateMessageToSocket(std::weak_ptr<void>, Messaging::IAsynchMessage *) override;
         
             // Setup
 
