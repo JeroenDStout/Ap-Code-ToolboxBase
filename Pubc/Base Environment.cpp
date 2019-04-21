@@ -24,7 +24,7 @@ namespace fs = std::experimental::filesystem;
 CON_RMR_DEFINE_CLASS(BaseEnvironment);
 
 CON_RMR_REGISTER_FUNC(BaseEnvironment, set_ref_dir);
-CON_RMR_REGISTER_FUNC(BaseEnvironment, set_user_doc_dir);
+CON_RMR_REGISTER_FUNC(BaseEnvironment, set_user_dir);
 CON_RMR_REGISTER_FUNC(BaseEnvironment, stats);
 CON_RMR_REGISTER_FUNC(BaseEnvironment, code_credits);
 CON_RMR_REGISTER_FUNC(BaseEnvironment, create_logman);
@@ -176,17 +176,17 @@ void BaseEnvironment::set_ref_dir(FilePath path)
     cout{} << "Env: Reference dir is now" << std::endl << " " << this->Env_Props.Reference_Dir << std::endl;
 }
 
-void BaseEnvironment::set_user_doc_dir(FilePath path)
+void BaseEnvironment::set_user_dir(FilePath path)
 {
     using cout = BlackRoot::Util::Cout;
 
-    this->Env_Props.User_Doc_Dir = this->expand_dir(path);
-    cout{} << "Env: User documents dir is now" << std::endl << " " << this->Env_Props.User_Doc_Dir << std::endl;
+    this->Env_Props.User_Dir = this->expand_dir(path);
+    cout{} << "Env: User documents dir is now" << std::endl << " " << this->Env_Props.User_Dir << std::endl;
 
         // We ensure the path, just to be sure, and by design
         // we should have permission to create directories
         // in this specific path
-    fs::create_directories(this->Env_Props.User_Doc_Dir);
+    fs::create_directories(this->Env_Props.User_Dir);
 }
 
     //  Typed
@@ -240,9 +240,9 @@ BaseEnvironment::FilePath BaseEnvironment::expand_dir(FilePath path)
         str.replace(str.begin() + pos, str.begin() + pos + 5, this->Env_Props.Reference_Dir.string());
     }
 
-        // Replace my doc path
-    while (std::string::npos != (pos = str.find("{os-my-doc}"))) {
-        str.replace(str.begin() + pos, str.begin() + pos + 11, BlackRoot::System::GetUserDocumentsPath().string());
+        // Replace roaming path
+    while (std::string::npos != (pos = str.find("{os-roaming}"))) {
+        str.replace(str.begin() + pos, str.begin() + pos + 12, BlackRoot::System::GetRoamingPath().string());
     }
 
         // Return expanded our dir
@@ -260,9 +260,9 @@ BaseEnvironment::FilePath BaseEnvironment::get_ref_dir()
     return this->Env_Props.Reference_Dir;
 }
 
-BaseEnvironment::FilePath BaseEnvironment::get_user_doc_dir()
+BaseEnvironment::FilePath BaseEnvironment::get_user_dir()
 {
-    return this->Env_Props.User_Doc_Dir;
+    return this->Env_Props.User_Dir;
 }
 
     //  HTML
@@ -383,7 +383,7 @@ void BaseEnvironment::_set_ref_dir(Conduits::Raw::IRelayMessage * msg) noexcept
     });
 }
 
-void BaseEnvironment::_set_user_doc_dir(Conduits::Raw::IRelayMessage * msg) noexcept
+void BaseEnvironment::_set_user_dir(Conduits::Raw::IRelayMessage * msg) noexcept
 {
     using cout = BlackRoot::Util::Cout;
 
@@ -394,10 +394,10 @@ void BaseEnvironment::_set_user_doc_dir(Conduits::Raw::IRelayMessage * msg) noex
         }
         DbAssertMsgFatal(json.is_string(), "Malformed JSON: cannot get path");
         
-        this->set_user_doc_dir(json.get<JSON::string_t>());
+        this->set_user_dir(json.get<JSON::string_t>());
 
         std::string rt = "User documents dir has been set to ";
-        rt += this->get_user_doc_dir().string();
+        rt += this->get_user_dir().string();
 
         msg->set_response_string_with_copy(rt.c_str());
         msg->set_OK();

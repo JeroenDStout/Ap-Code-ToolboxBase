@@ -33,7 +33,7 @@ namespace Core {
 
         virtual void set_boot_dir(FilePath) = 0;
         virtual void set_ref_dir(FilePath) = 0;
-        virtual void set_user_doc_dir(FilePath) = 0;
+        virtual void set_user_dir(FilePath) = 0;
         
             // Control
 
@@ -49,7 +49,7 @@ namespace Core {
             // Info
 
         virtual FilePath get_ref_dir() = 0;
-        virtual FilePath get_user_doc_dir() = 0;
+        virtual FilePath get_user_dir() = 0;
 
         /// ???
 
