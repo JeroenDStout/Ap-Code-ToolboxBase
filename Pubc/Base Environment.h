@@ -100,7 +100,7 @@ namespace Base {
         bool get_is_running() override;
         void async_receive_message(Conduits::Raw::IRelayMessage *) override;
 
-        virtual FilePath expand_dir(FilePath);
+        virtual FilePath expand_dir(FilePath) override;
         
             // Http
 

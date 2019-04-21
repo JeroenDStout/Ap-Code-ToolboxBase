@@ -45,6 +45,7 @@ namespace Core {
             // Util
 
         virtual bool get_is_running() = 0;
+		virtual FilePath expand_dir(FilePath) = 0;
 
             // Info
 
