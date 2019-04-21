@@ -70,7 +70,10 @@ namespace Base {
 
         bool internal_get_thread_should_interrupt();
         
+            // Web
+        
         virtual std::string internal_get_favicon_name() { return ""; }
+        virtual void internal_handle_web_request(std::string path, Conduits::Raw::IRelayMessage *);
         
     public:
         BaseEnvironment();

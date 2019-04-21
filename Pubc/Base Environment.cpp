@@ -49,19 +49,11 @@ BaseEnvironment::BaseEnvironment()
     };
 
     this->Simple_Relay.Call_Map["web"] = [=](Conduits::Raw::IRelayMessage * msg) {
-        BlackRoot::IO::BaseFileSource s;
-        Conduits::Util::HttpFileServer server;
-        server.Inner_Source = &s;
-        server.handle(this->get_ref_dir() / "Web", msg->get_adapting_path(), msg);
-        msg->set_OK();
+		this->internal_handle_web_request(msg->get_adapting_path(), msg);
         return true;
     };
     this->Simple_Relay.Call_Map["favicon.ico"] = [=](Conduits::Raw::IRelayMessage * msg) {
-        BlackRoot::IO::BaseFileSource s;
-        Conduits::Util::HttpFileServer server;
-        server.Inner_Source = &s;
-        server.handle(this->get_ref_dir() / "Web" / this->internal_get_favicon_name(), "", msg);
-        msg->set_OK();
+		this->internal_handle_web_request(this->internal_get_favicon_name(), msg);
         return true;
     };
 }
@@ -263,6 +255,17 @@ BaseEnvironment::FilePath BaseEnvironment::get_ref_dir()
 BaseEnvironment::FilePath BaseEnvironment::get_user_dir()
 {
     return this->Env_Props.User_Dir;
+}
+
+void BaseEnvironment::internal_handle_web_request(std::string path, Conduits::Raw::IRelayMessage * msg)
+{
+	// TODO: this is just a placeholding sketch
+	
+    BlackRoot::IO::BaseFileSource s;
+    Conduits::Util::HttpFileServer server;
+    server.Inner_Source = &s;
+    server.handle(this->get_ref_dir() / "Web", path.c_str(), msg);
+    msg->set_OK();
 }
 
     //  HTML
