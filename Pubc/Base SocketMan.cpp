@@ -28,6 +28,7 @@
 #include <chrono>
 
 #include "BlackRoot/Pubc/Threaded IO Stream.h"
+#include "BlackRoot/Pubc/Version Reg.h"
 
 #include "Conduits/Pubc/Function Message.h"
 
@@ -58,6 +59,7 @@ public:
 	}
 
 	void on_close(connection_hdl hdl) {
+		this->socketman->internal_async_close_connexion(hdl);
 	}
     
     bool validate_via_socketman(connection_hdl hdl) {
@@ -87,22 +89,16 @@ public:
 	}
 
 	void on_message(connection_hdl hdl, server::message_ptr msg) {
-        // TODO
+        using cout = BlackRoot::Util::Cout;
+        
+		server::connection_ptr con = this->get_con_from_hdl(hdl);
+        if (!con)
+            return;
+		
+        const auto & payload = msg->get_payload();
+		cout{} << "msg: " << payload << std::endl;
 
-        //using cout = BlackRoot::Util::Cout;
-
-        //std::string payload = msg->get_payload();
-
-        //std::string prefixPlease = "please, ";
-
-        //if (payload.substr(0, prefixPlease.size()) == prefixPlease) {
-        //    if (!this->socketMan->InternalReceiveAdHocCommand(hdl, payload.substr(prefixPlease.size()))) {
-        //        cout{} << "! Incoming 'please' message was not valid: " << msg->get_payload() << std::endl;
-        //    }
-        //}
-        //else {
-        //    cout{} << "! Incoming message was not valid: " << msg->get_payload() << std::endl;
-        //}
+		this->socketman->internal_async_receive_message(con, msg->get_payload());
 	}
 
 	void on_http(connection_hdl hdl) {
@@ -267,6 +263,78 @@ void Socketman::connect_en_passant_conduit(Conduits::Raw::ConduitRef ref)
         }
     );
     this->En_Passant_Conduit = ref;
+}
+
+    //  Messages
+    // --------------------
+
+void Socketman::internal_async_close_connexion(ConnexionPtr sender)
+{
+    using cout = BlackRoot::Util::Cout;
+
+    std::shared_lock<std::shared_mutex> shlk(this->Mx_Socket_Connexions);
+
+	auto ptr = sender.lock();
+	
+	auto & it = this->Socket_Connexions.find(ptr);
+	if (it != this->Socket_Connexions.end()) {
+		auto & prop = it->second;
+
+		cout{} << "Closed connexion:" << std::endl << " " << prop.Client_Prop.Client_Name << std::endl;
+
+		this->Socket_Connexions.erase(it);
+	}
+}
+
+void Socketman::internal_async_receive_message(ConnexionPtr sender, const std::string & payload)
+{
+    using cout = BlackRoot::Util::Cout;
+
+    std::shared_lock<std::shared_mutex> shlk(this->Mx_Socket_Connexions);
+
+	auto ptr = sender.lock();
+	auto & it = this->Socket_Connexions.find(ptr);
+	if (it == this->Socket_Connexions.end()) {
+		try {
+			auto client_prop = Conduits::Protocol::ClientProperties::try_parse_welcome_message((void*)(payload.c_str()), payload.length());
+
+			SockProp sock_prop;
+			sock_prop.Connexion_Established = std::chrono::system_clock::now();
+			sock_prop.Client_Prop = std::move(client_prop);
+
+			cout{} << "New websocket connexion:" << std::endl << " " << sock_prop.Client_Prop.Client_Name << std::endl << " " << sock_prop.Client_Prop.Client_Version << std::endl;
+		}
+		catch (std::exception e)
+		{
+			std::string str = "Invalid welcome message: ";
+			str += e.what();
+			this->internal_async_send_message(sender, str);
+		}
+		catch (BlackRoot::Debug::Exception * e)
+		{
+			std::string str = "Invalid welcome message: ";
+			str += e->what();
+			delete e;
+			this->internal_async_send_message(sender, str);
+		}
+        catch (...)
+        {
+			std::string str = "Invalid welcome message!";
+			this->internal_async_send_message(sender, str);
+		}
+
+		Conduits::Protocol::ServerProperties prop;
+		prop.Server_Name = BlackRoot::Repo::VersionRegistry::GetMainProjectVersion().Name;
+		prop.Server_Version = BlackRoot::Repo::VersionRegistry::GetMainProjectVersion().Version;
+		
+		this->internal_async_send_message(sender, Conduits::Protocol::ServerProperties::create_welcome_message_response(prop));
+	}
+}
+
+void Socketman::internal_async_send_message(ConnexionPtr sender, const std::string & payload)
+{
+    websocketpp::lib::error_code ec;
+	this->Internal_Server->send(sender, payload, websocketpp::frame::opcode::text, ec);
 }
 
     //  Http
@@ -439,16 +507,3 @@ bool Socketman::internal_check_connexion_is_allowed(std::string ip, std::string 
 
     return true;
 }
-
-//bool SocketMan::InternalReceiveAdHocCommand(ConnectionPtr ptr, std::string string)
-//{
-//    Toolbox::Core::GetEnvironment()->ReceiveDelegateMessageFromSocket(ptr, string);
-//    return true;
-//}
-//
-//void SocketMan::MessageSendImmediate(std::weak_ptr<void> hdl, std::string string) 
-//{
-//    websocketpp::lib::error_code ec;
-//
-//    this->InternalServer->send(hdl, string, websocketpp::frame::opcode::text, ec);
-//}
