@@ -7,6 +7,7 @@
 #include "BlackRoot/Pubc/Threaded IO Stream.h"
 #include "BlackRoot/Pubc/Files Types.h"
 #include "BlackRoot/Pubc/Sys Path.h"
+#include "BlackRoot/Pubc/Version Reg.h"
 
 #include "ToolboxBase/Pubc/Entry.h"
 
@@ -87,6 +88,17 @@ int Toolbox::Core::DefaultStart(StartupFunction f, int argc, char* argv[])
             freopen("CONOUT$", "w", stdout);
             freopen("CONOUT$", "w", stderr);
         }
+        
+        std::string title;
+
+        const auto & version = BlackRoot::Repo::VersionRegistry::GetMainProjectVersion();
+        title = version.Name;
+        title += " (";
+        title += version.Version;
+        title += ")";
+
+            // TODO: properly convert a utf-8 string to a wstring
+        ::SetConsoleTitleA(title.c_str());
     }
 #endif
 
