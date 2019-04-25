@@ -15,7 +15,8 @@
 
 #include "Conduits/Pubc/Interface Nexus.h"
 #include "Conduits/Pubc/Savvy Relay Receiver.h"
-#include "Conduits/Pubc/Websocket Protocol.h"
+#include "Conduits/Pubc/Websocket Protocol What-ho.h"
+#include "Conduits/Pubc/Websocket Protocol Messages.h"
 
 #include "ToolboxBase/Pubc/Interface Socketman.h"
 
@@ -76,6 +77,7 @@ namespace Base {
 		
 		virtual void internal_async_close_connexion(ConnexionPtr sender);
 		virtual void internal_async_receive_message(ConnexionPtr sender, const std::string & payload);
+		virtual void internal_async_handle_message(ConnexionPtrShared, SockProp & prop, Conduits::Protocol::MessageScratch &);
 		virtual void internal_async_send_message(ConnexionPtr sender, const std::string & payload);
 
         //virtual bool internal_receive_ad_hoc_command(ConnexionPtr, std::string);

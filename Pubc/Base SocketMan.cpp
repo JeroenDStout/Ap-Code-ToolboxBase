@@ -27,10 +27,12 @@
 
 #include <chrono>
 
+#include "BlackRoot/Pubc/Assert.h"
 #include "BlackRoot/Pubc/Threaded IO Stream.h"
 #include "BlackRoot/Pubc/Version Reg.h"
 
 #include "Conduits/Pubc/Function Message.h"
+#include "Conduits/Pubc/Disposable Message.h"
 
 #include "ToolboxBase/Pubc/Base Environment.h"
 #include "ToolboxBase/Pubc/Base SocketMan.h"
@@ -280,7 +282,7 @@ void Socketman::internal_async_close_connexion(ConnexionPtr sender)
 	if (it != this->Socket_Connexions.end()) {
 		auto & prop = it->second;
 
-		cout{} << "Closed connexion:" << std::endl << " " << prop.Client_Prop.Client_Name << std::endl;
+		cout{} << "Closed connexion:" << std::endl << " " << prop.Client_Prop.Name << std::endl;
 
 		this->Socket_Connexions.erase(it);
 	}
@@ -295,20 +297,22 @@ void Socketman::internal_async_receive_message(ConnexionPtr sender, const std::s
 	auto ptr = sender.lock();
 	auto & it = this->Socket_Connexions.find(ptr);
 	if (it == this->Socket_Connexions.end()) {
-		try {
-			auto client_prop = Conduits::Protocol::ClientProperties::try_parse_welcome_message((void*)(payload.c_str()), payload.length());
+		SockProp sock_prop;
 
-			SockProp sock_prop;
+		try {
+			auto client_prop = Conduits::Protocol::ClientProperties::try_parse_what_ho_message((void*)(payload.c_str()), payload.length());
+
 			sock_prop.Connexion_Established = std::chrono::system_clock::now();
 			sock_prop.Client_Prop = std::move(client_prop);
 
-			cout{} << "New websocket connexion:" << std::endl << " " << sock_prop.Client_Prop.Client_Name << std::endl << " " << sock_prop.Client_Prop.Client_Version << std::endl;
+			cout{} << "New websocket connexion:" << std::endl << " " << sock_prop.Client_Prop.Name << std::endl << " " << sock_prop.Client_Prop.Name << std::endl;
 		}
 		catch (std::exception e)
 		{
 			std::string str = "Invalid welcome message: ";
 			str += e.what();
 			this->internal_async_send_message(sender, str);
+            return;
 		}
 		catch (BlackRoot::Debug::Exception * e)
 		{
@@ -316,25 +320,139 @@ void Socketman::internal_async_receive_message(ConnexionPtr sender, const std::s
 			str += e->what();
 			delete e;
 			this->internal_async_send_message(sender, str);
+            return;
 		}
         catch (...)
         {
 			std::string str = "Invalid welcome message!";
 			this->internal_async_send_message(sender, str);
+            return;
 		}
+        
+            // Upgrade our lock
+        shlk.unlock();
+
+            // {PARANOIA} Quite possible that if lots of
+            // messags are comign in, this unique lock will
+            // not actually succeed for a while
+        std::unique_lock<std::shared_mutex> unique_lk(this->Mx_Socket_Connexions);
+
+            // Sanity check; we could be here in 2 threads
+            // if the client is so impatient it sends two
+            // messages at once (it shouldn't)
+	    auto & it_new = this->Socket_Connexions.find(ptr);
+        if (it_new != this->Socket_Connexions.end()) {
+			this->internal_async_send_message(sender, "We didn't even get to respond to your welcome! Please have patience.");
+            return;
+        }
+        
+        this->Socket_Connexions[ptr] = std::move(sock_prop);
+        unique_lk.unlock();
 
 		Conduits::Protocol::ServerProperties prop;
-		prop.Server_Name = BlackRoot::Repo::VersionRegistry::GetMainProjectVersion().Name;
-		prop.Server_Version = BlackRoot::Repo::VersionRegistry::GetMainProjectVersion().Version;
-		
-		this->internal_async_send_message(sender, Conduits::Protocol::ServerProperties::create_welcome_message_response(prop));
+		prop.Name    = BlackRoot::Repo::VersionRegistry::GetMainProjectVersion().Name;
+		prop.Version = BlackRoot::Repo::VersionRegistry::GetMainProjectVersion().Version;
+
+		this->internal_async_send_message(sender, Conduits::Protocol::ServerProperties::create_what_ho_response(prop));
+
+        return;
 	}
+
+	try {
+		auto intr = Conduits::Protocol::MessageScratch::try_parse_message((void*)(payload.c_str()), payload.length());
+
+        this->internal_async_handle_message(it->first, it->second, intr);
+	}
+	catch (std::exception e)
+	{
+		std::string str = "Invalid message: ";
+		str += e.what();
+		this->internal_async_send_message(sender, str);
+        return;
+	}
+	catch (BlackRoot::Debug::Exception * e)
+	{
+		std::string str = "Invalid message: ";
+		str += e->what();
+		delete e;
+		this->internal_async_send_message(sender, str);
+        return;
+	}
+    catch (...)
+    {
+		std::string str = "Invalid message!";
+		this->internal_async_send_message(sender, str);
+        return;
+	}
+}
+
+void Socketman::internal_async_handle_message(ConnexionPtrShared sender, SockProp & prop, Conduits::Protocol::MessageScratch &intr)
+{
+        // This is being sent to nobody in particular;
+        // route this to the en-passant
+    if (intr.Recipient_ID == 0 && !intr.get_requires_response()) {
+        auto * msg = new Conduits::DisposableMessage();
+        msg->Path.assign(intr.String, intr.String_Length);
+        msg->set_message_segments_from_list(intr.Segments);
+        msg->sender_prepare_for_send();
+                
+        std::shared_lock<std::shared_mutex> shlk(this->Mx_Nexus);
+        this->Message_Nexus->send_on(this->En_Passant_Conduit, msg);
+        return;
+    }
+
+    auto other_return_id    = intr.Reply_To_Me_ID;
+
+        // Create a message which will send back the response
+        // We set reply_to_me to 0 as we do not expect a reply
+    auto * msg = new Conduits::BaseFunctionMessage([=](Conduits::BaseFunctionMessage * msg) {
+        Conduits::Protocol::MessageScratch res;
+
+            // Sanity clip on response string - way more than
+            // should in any sane way be used
+        if (msg->Response_String.size() > 0xFFFF) {
+            msg->Response_String.resize(0xFFFF);
+        }
+
+        res.Recipient_ID           = other_return_id;
+        res.Reply_To_Me_ID         = 0;
+
+        res.set_is_response(true);
+        res.set_has_succeeded(msg->Message_State == Conduits::MessageState::ok);
+
+        res.String          = msg->Response_String.c_str();
+        res.String_Length   = (uint16)msg->Response_String.size();
+
+        for (auto & it : msg->Response_Segments) {
+            Conduits::Raw::SegmentData dat;
+            dat.Data = (void*)it.second.data();
+            dat.Length = it.second.size();
+            res.Segments.push_back({ it.first, dat });
+        }
+        
+		this->internal_async_send_message(sender, Conduits::Protocol::MessageScratch::try_stringify_message(res));
+
+        delete msg;
+    });
+
+    msg->Path.assign(intr.String, intr.String_Length);
+
+    msg->set_message_segments_from_list(intr.Segments);
+    msg->sender_prepare_for_send();
+
+    if (intr.Recipient_ID == 0) {    
+        std::shared_lock<std::shared_mutex> shlk(this->Mx_Nexus);
+        this->Message_Nexus->send_on(this->En_Passant_Conduit, msg);
+    }
+    else {
+        DbAssertFatal(0);
+    }
 }
 
 void Socketman::internal_async_send_message(ConnexionPtr sender, const std::string & payload)
 {
     websocketpp::lib::error_code ec;
-	this->Internal_Server->send(sender, payload, websocketpp::frame::opcode::text, ec);
+	this->Internal_Server->send(sender, payload, websocketpp::frame::opcode::binary, ec);
 }
 
     //  Http
