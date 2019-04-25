@@ -8,6 +8,8 @@
 #include "BlackRoot/Pubc/Version Reg.h"
 #include "BlackRoot/Pubc/Threaded IO Stream.h"
 #include "BlackRoot/Pubc/Sys Path.h"
+#include "BlackRoot/Pubc/Sys Sound.h"
+#include "BlackRoot/Pubc/Sys Alert.h"
 
 #include "Conduits/Pubc/File Server.h"
 
@@ -411,6 +413,9 @@ void BaseEnvironment::_ping(Conduits::Raw::IRelayMessage * msg) noexcept
 {
     using cout = BlackRoot::Util::Cout;
     cout{} << '\a' << "(pong)" << std::endl;
+
+    BlackRoot::System::PlayAdHocSound(this->get_ref_dir() / "Data/ping.wav");
+    BlackRoot::System::FlashCurrentWindow();
 
     this->savvy_try_wrap_write_json(msg, 0, [&] {
         JSON ret = { "pong" };
