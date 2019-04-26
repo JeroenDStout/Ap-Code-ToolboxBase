@@ -47,16 +47,16 @@ BaseEnvironment::BaseEnvironment()
     });
 
     this->Simple_Relay.Call_Map["env"] = [=](Conduits::Raw::IRelayMessage * msg) {
-        return this->rmr_handle_message_immediate(msg);
+        this->rmr_handle_message_immediate_and_release(msg);
     };
 
     this->Simple_Relay.Call_Map["web"] = [=](Conduits::Raw::IRelayMessage * msg) {
 		this->internal_handle_web_request(msg->get_adapting_path(), msg);
-        return true;
+        msg->release();
     };
     this->Simple_Relay.Call_Map["favicon.ico"] = [=](Conduits::Raw::IRelayMessage * msg) {
 		this->internal_handle_web_request(this->internal_get_favicon_name(), msg);
-        return true;
+        msg->release();
     };
 }
 
