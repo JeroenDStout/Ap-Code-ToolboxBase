@@ -14,6 +14,7 @@
 #include <chrono>
 
 #include "Conduits/Pubc/Interface Nexus.h"
+#include "Conduits/Pubc/Base Message.h"
 #include "Conduits/Pubc/Savvy Relay Receiver.h"
 #include "Conduits/Pubc/Websocket Protocol What-ho.h"
 #include "Conduits/Pubc/Websocket Protocol Messages.h"
@@ -31,6 +32,7 @@ namespace Base {
         using HandleHttpCallback    = std::function<void(JSON header, std::string body)>;
 		using ConnexionPtr		    = std::weak_ptr<void>;
 		using ConnexionPtrShared    = std::shared_ptr<void>;
+        using OpenConduitFunc       = Conduits::IBaseMessage::OpenConduitFunc;
 
 		struct SocketConnexionProperties {
 			std::chrono::system_clock::time_point  Connexion_Established;
@@ -47,6 +49,11 @@ namespace Base {
         using WhitelistTest      = std::pair<std::string, std::regex>;
         using WhitelistMap       = std::map<std::string, std::string>;
 
+        struct PendingMessageProp {
+            Conduits::Raw::ConduitRef   Reply_To_Me_ID;
+        };
+        using PendingMessageMap  = std::map<Conduits::Raw::IRelayMessage*, PendingMessageProp>;
+
         using RlMessage          = Conduits::Raw::IRelayMessage;
 
         using SockMap            = std::map<ConnexionPtrShared, SockProp>;
@@ -59,6 +66,7 @@ namespace Base {
         std::shared_mutex          Mx_Nexus;
         Conduits::NexusHolder<>    Message_Nexus;
         Conduits::Raw::ConduitRef  En_Passant_Conduit;
+        OpenConduitFunc            Open_Conduit_Func;
 
         std::vector<ListenThreadRef>    Listen_Threads;
         
@@ -66,8 +74,8 @@ namespace Base {
         std::vector<WhitelistTest> Whitelisted_Address_Test;
         WhitelistMap               Whitelisted_Addresses;
 
-        std::mutex                 Mx_Pending_Message_List;
-        std::set<RlMessage*>       Sent_Pending_Message_List;
+        std::mutex                 Mx_Pending_Messages;
+        PendingMessageMap          Pending_Message_Map;
 
         //virtual void internal_server_listen();
         //virtual void internal_server_talk();
@@ -75,6 +83,8 @@ namespace Base {
         virtual bool internal_check_connexion_is_allowed(std::string ip, std::string port);
         virtual void internal_async_handle_http(std::string path, JSON header, HandleHttpCallback);
 		
+        virtual bool internal_async_open_conduit_func(Conduits::Raw::INexus *, Conduits::Raw::IRelayMessage *, Conduits::Raw::IOpenConduitHandler *) noexcept;
+
 		virtual void internal_async_close_connexion(ConnexionPtr sender);
 		virtual void internal_async_receive_message(ConnexionPtr sender, const std::string & payload);
 		virtual void internal_async_handle_message(ConnexionPtrShared, SockProp & prop, Conduits::Protocol::MessageScratch &);

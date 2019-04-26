@@ -161,6 +161,9 @@ public:
 
 Socketman::Socketman()
 {
+    namespace ph = std::placeholders;
+
+    this->Open_Conduit_Func = std::bind(&Socketman::internal_async_open_conduit_func, this, ph::_1, ph::_2, ph::_3);
 }
 
 Socketman::~Socketman()
@@ -232,8 +235,8 @@ void Socketman::deinitialise_and_wait(const JSON param)
         // Wait for pending messages to finish, seeing as they
         // hold a pointer to us; for now we spinlock (TODO)
     while (true) {
-        std::unique_lock<std::mutex> lk(this->Mx_Pending_Message_List);
-        if (this->Sent_Pending_Message_List.size() == 0)
+        std::unique_lock<std::mutex> lk(this->Mx_Pending_Messages);
+        if (this->Pending_Message_Map.size() == 0)
             break;
         lk.unlock();
         std::this_thread::sleep_for(100ms);
@@ -274,7 +277,7 @@ void Socketman::internal_async_close_connexion(ConnexionPtr sender)
 {
     using cout = BlackRoot::Util::Cout;
 
-    std::shared_lock<std::shared_mutex> shlk(this->Mx_Socket_Connexions);
+    std::unique_lock<std::shared_mutex> shlk(this->Mx_Socket_Connexions);
 
 	auto ptr = sender.lock();
 	
@@ -418,7 +421,34 @@ void Socketman::internal_async_handle_message(ConnexionPtrShared sender, SockPro
         res.Reply_To_Me_ID         = 0;
 
         res.set_is_response(true);
-        res.set_has_succeeded(msg->Message_State == Conduits::MessageState::ok);
+
+        switch (msg->Message_State) {
+        case Conduits::MessageState::ok:
+            res.set_has_succeeded(true);
+            break;
+        case Conduits::MessageState::ok_opened_conduit:
+            res.set_has_succeeded(true);
+            res.set_confirm_open_conduit(true);
+            break;
+        case Conduits::MessageState::connexion_failure:
+            res.set_connexion_failure(true);
+            res.set_has_succeeded(false);
+            break;
+        default:
+            res.set_has_succeeded(false);
+            break;
+        }
+
+        if (msg->Message_State == Conduits::MessageState::ok_opened_conduit) {
+            res.set_confirm_open_conduit(true);
+            res.set_has_succeeded(true);
+        }
+        else if (msg->Message_State == Conduits::MessageState::ok) {
+            res.set_has_succeeded(true);
+        }
+        else {
+            res.set_has_succeeded(false);
+        }
 
         res.String          = msg->Response_String.c_str();
         res.String_Length   = (uint16)msg->Response_String.size();
@@ -429,8 +459,18 @@ void Socketman::internal_async_handle_message(ConnexionPtrShared sender, SockPro
             dat.Length = it.second.size();
             res.Segments.push_back({ it.first, dat });
         }
+            // Remove us from the pending message list
+        {   std::lock_guard<std::mutex> lk(this->Mx_Pending_Messages);
+            auto it = this->Pending_Message_Map.find(msg);
+            res.Reply_To_Me_ID = it->second.Reply_To_Me_ID;
+        }
         
 		this->internal_async_send_message(sender, Conduits::Protocol::MessageScratch::try_stringify_message(res));
+        
+            // Remove us from the pending message list
+        {   std::lock_guard<std::mutex> lk(this->Mx_Pending_Messages);
+            this->Pending_Message_Map.erase(msg);
+        }
 
         delete msg;
     });
@@ -438,6 +478,13 @@ void Socketman::internal_async_handle_message(ConnexionPtrShared sender, SockPro
     msg->Path.assign(intr.String, intr.String_Length);
 
     msg->set_message_segments_from_list(intr.Segments);
+    msg->set_open_conduit_function(&this->Open_Conduit_Func);
+    
+        // Add to pending message list
+    {   std::lock_guard<std::mutex> lk(this->Mx_Pending_Messages);
+        this->Pending_Message_Map[msg] = { 0 };
+    }
+
     msg->sender_prepare_for_send();
 
     if (intr.Recipient_ID == 0) {    
@@ -445,7 +492,8 @@ void Socketman::internal_async_handle_message(ConnexionPtrShared sender, SockPro
         this->Message_Nexus->send_on(this->En_Passant_Conduit, msg);
     }
     else {
-        DbAssertFatal(0);
+        std::shared_lock<std::shared_mutex> shlk(this->Mx_Nexus);
+        this->Message_Nexus->send_on(intr.Recipient_ID, msg);
     }
 }
 
@@ -453,6 +501,37 @@ void Socketman::internal_async_send_message(ConnexionPtr sender, const std::stri
 {
     websocketpp::lib::error_code ec;
 	this->Internal_Server->send(sender, payload, websocketpp::frame::opcode::binary, ec);
+}
+
+    //  Conduits
+    // --------------------
+
+bool Socketman::internal_async_open_conduit_func(Conduits::Raw::INexus * nexus, Conduits::Raw::IRelayMessage * msg, Conduits::Raw::IOpenConduitHandler * handler) noexcept
+{
+    std::shared_lock<std::shared_mutex> shlk(this->Mx_Nexus);
+    
+    Conduits::BaseNexus::InfoFunc info_func =
+        [this](Conduits::Raw::ConduitRef, const Conduits::ConduitUpdateInfo)
+    {
+    };
+    Conduits::BaseNexus::MessageFunc message_func =
+        [this](Conduits::Raw::ConduitRef, Conduits::Raw::IRelayMessage * msg)
+    {
+        BlackRoot::Util::Cout{} << "HMMM";
+    };
+
+    Conduits::Raw::IOpenConduitHandler::ResultData data;
+
+    auto id = this->Message_Nexus->manual_open_conduit_to(nexus, info_func, message_func);
+    shlk.unlock();
+    
+    std::unique_lock<std::mutex> lk(this->Mx_Pending_Messages);
+    this->Pending_Message_Map[msg].Reply_To_Me_ID = id.first;
+    lk.unlock();
+
+    handler->handle_success(&data, id.second);
+
+    return true;
 }
 
     //  Http
@@ -562,8 +641,8 @@ void Socketman::internal_async_handle_http(std::string path, JSON header, Handle
         }
         
             // Remove us from the pending message list
-        {   std::lock_guard<std::mutex> lk(this->Mx_Pending_Message_List);
-            this->Sent_Pending_Message_List.erase(msg);
+        {   std::lock_guard<std::mutex> lk(this->Mx_Pending_Messages);
+            this->Pending_Message_Map.erase(msg);
         }
 
         delete msg;
@@ -573,8 +652,8 @@ void Socketman::internal_async_handle_http(std::string path, JSON header, Handle
     msg->sender_prepare_for_send();
     
         // Add to pending message list
-    {   std::lock_guard<std::mutex> lk(this->Mx_Pending_Message_List);
-        this->Sent_Pending_Message_List.insert(msg);
+    {   std::lock_guard<std::mutex> lk(this->Mx_Pending_Messages);
+        this->Pending_Message_Map[msg] = {};
     }
 
         // Send message off
