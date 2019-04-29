@@ -163,7 +163,9 @@ Socketman::Socketman()
 {
     namespace ph = std::placeholders;
 
-    this->Open_Conduit_Func = std::bind(&Socketman::internal_async_open_conduit_func, this, ph::_1, ph::_2, ph::_3);
+    this->Unique_Reply_ID           = 1;
+    this->Open_Conduit_Func         = std::bind(&Socketman::internal_async_open_conduit_func, this, ph::_1, ph::_2, ph::_3);
+    this->Send_On_From_Conduit_Func = std::bind(&Socketman::internal_send_on_from_conduit_func, this, ph::_1, ph::_2);
 }
 
 Socketman::~Socketman()
@@ -218,6 +220,13 @@ void Socketman::initialise(const JSON param)
         }));
         this->Listen_Threads.push_back(std::move(tmpPtr));
     }
+
+        // TODO: runs forever
+    this->Nexus_Listen_Thread.reset(new std::thread([&]{
+        while (true) {
+            this->Message_Nexus->await_message_and_handle();
+        }
+    }));
 }
 
 void Socketman::deinitialise_and_wait(const JSON param)
@@ -247,6 +256,14 @@ void Socketman::deinitialise_and_wait(const JSON param)
     this->Internal_Server = nullptr;
 }
 
+uint32 Socketman::get_unique_reply_id()
+{
+        // {paranoia} could theoretically overflow
+        // if you send a thousand messages a second
+        // for about three years
+    return this->Unique_Reply_ID++;
+}
+
     //  Control
     // --------------------
 
@@ -262,7 +279,8 @@ void Socketman::connect_en_passant_conduit(Conduits::Raw::ConduitRef ref)
         [=](Conduits::Raw::ConduitRef, Conduits::ConduitUpdateInfo info) {
         },
         [=](Conduits::Raw::ConduitRef, Conduits::Raw::IRelayMessage * msg) {
-            msg->set_response_string_with_copy("Socketman does not allow talking back through the en passant circuit.");
+            std::string res = "Socketman does not allow talking back through the en passant circuit.";
+            msg->set_response_string_with_copy(res.c_str());
             msg->set_FAILED();
             msg->release();
         }
@@ -391,6 +409,8 @@ void Socketman::internal_async_receive_message(ConnexionPtr sender, const std::s
 
 void Socketman::internal_async_handle_message(ConnexionPtrShared sender, SockProp & prop, Conduits::Protocol::MessageScratch &intr)
 {
+    using cout = BlackRoot::Util::Cout;
+
         // This is being sent to nobody in particular;
         // route this to the en-passant
     if (intr.Recipient_ID == 0 && !intr.get_requires_response()) {
@@ -404,7 +424,51 @@ void Socketman::internal_async_handle_message(ConnexionPtrShared sender, SockPro
         return;
     }
 
-    auto other_return_id    = intr.Reply_To_Me_ID;
+    if (intr.get_is_resonse()) {
+            // TODO: all of this is iffy
+
+        std::unique_lock<std::shared_mutex> lk(this->Mx_Pending_Reply);
+        auto & it = this->Pending_Reply_Map.find(intr.Recipient_ID);
+        if (it == this->Pending_Reply_Map.end()) {
+                // TODO: handle
+            cout{} << "Reply sent to id that was not used!";
+        }
+        auto * msg = it->second.Message_Waiting_For_Reply;
+        this->Pending_Reply_Map.erase(it);
+        lk.unlock();
+
+        if (intr.String_Length > 0) {
+                // we really just use std string
+                // to add a zero; it's very decadent
+            std::string str;
+            str.assign(intr.String, intr.String_Length);
+            msg->set_response_string_with_copy(str.c_str());
+        }
+        for (auto & elem : intr.Segments) {
+            msg->set_response_segment_with_copy(elem.first, elem.second);
+        }
+        if (intr.get_has_succeeded()) {
+            msg->set_OK();
+            if (intr.get_confirm_open_conduit()) {
+                msg->set_OK_opened_conduit();
+            }
+        }
+        else {
+            if (intr.get_connexion_failure()) {
+                msg->set_FAILED_connexion();
+            }
+            else {
+                msg->set_FAILED();
+            }
+        }
+        
+        msg->release();
+        return;
+    }
+
+    SendOnFromConduitProp send_on_prop;
+    send_on_prop.Connexion    = sender;
+    send_on_prop.Receiver_ID  = intr.Reply_To_Me_ID;
 
         // Create a message which will send back the response
         // We set reply_to_me to 0 as we do not expect a reply
@@ -417,7 +481,7 @@ void Socketman::internal_async_handle_message(ConnexionPtrShared sender, SockPro
             msg->Response_String.resize(0xFFFF);
         }
 
-        res.Recipient_ID           = other_return_id;
+        res.Recipient_ID           = send_on_prop.Receiver_ID;
         res.Reply_To_Me_ID         = 0;
 
         res.set_is_response(true);
@@ -464,6 +528,11 @@ void Socketman::internal_async_handle_message(ConnexionPtrShared sender, SockPro
             auto it = this->Pending_Message_Map.find(msg);
             res.Reply_To_Me_ID = it->second.Reply_To_Me_ID;
         }
+
+        if (res.get_confirm_open_conduit()) {
+            std::lock_guard<std::shared_mutex> lk(this->Mx_Send_On_From_Conduit);
+            this->Send_On_From_Conduit_Map[res.Reply_To_Me_ID] = send_on_prop;
+        }
         
 		this->internal_async_send_message(sender, Conduits::Protocol::MessageScratch::try_stringify_message(res));
         
@@ -497,6 +566,54 @@ void Socketman::internal_async_handle_message(ConnexionPtrShared sender, SockPro
     }
 }
 
+void Socketman::internal_send_on_from_conduit_func(Conduits::Raw::ConduitRef ref, Conduits::Raw::IRelayMessage *msg)
+{
+    std::shared_lock<std::shared_mutex> lk(this->Mx_Send_On_From_Conduit);
+    auto & it = this->Send_On_From_Conduit_Map.find(ref);
+    if (it == this->Send_On_From_Conduit_Map.end()) {
+        msg->set_FAILED_connexion();
+        msg->release();
+        return;
+    }
+    auto connexion   = it->second.Connexion;
+    auto receiver_id = it->second.Receiver_ID;
+    lk.unlock();
+
+    size_t path_str_len = strlen(msg->get_path_string());
+    DbAssertFatal(path_str_len < 0xFFFF);
+
+    Conduits::Protocol::MessageScratch intr;
+    intr.String = msg->get_path_string();
+    intr.String_Length = uint16(path_str_len);
+    intr.Recipient_ID  = receiver_id;
+
+    intr.set_requires_response(msg->get_response_expectation() == Conduits::ResponseDesire::needed);
+    if (intr.get_requires_response()) {
+        intr.Reply_To_Me_ID = this->get_unique_reply_id();
+
+        PendingReplyProp prop;
+        prop.Message_Waiting_For_Reply = msg;
+
+        std::unique_lock<std::shared_mutex> lk(this->Mx_Pending_Reply);
+        this->Pending_Reply_Map[intr.Reply_To_Me_ID] = prop;
+    }
+
+    uint8 usedSegments[256];
+    uint8 indexCount = msg->get_message_segment_indices(usedSegments, 256);
+
+    for (int i = 0; i < indexCount; i++) {
+        auto seg = msg->get_message_segment(usedSegments[i]);
+
+        Conduits::Protocol::MessageScratch::SegmentElem elem;
+        elem.first  = usedSegments[i];
+        elem.second.Data   = seg.Data;
+        elem.second.Length = seg.Length;
+        intr.Segments.push_back(elem);
+    }
+
+    this->internal_async_send_message(connexion, Conduits::Protocol::MessageScratch::try_stringify_message(intr));
+}
+
 void Socketman::internal_async_send_message(ConnexionPtr sender, const std::string & payload)
 {
     websocketpp::lib::error_code ec;
@@ -514,11 +631,7 @@ bool Socketman::internal_async_open_conduit_func(Conduits::Raw::INexus * nexus, 
         [this](Conduits::Raw::ConduitRef, const Conduits::ConduitUpdateInfo)
     {
     };
-    Conduits::BaseNexus::MessageFunc message_func =
-        [this](Conduits::Raw::ConduitRef, Conduits::Raw::IRelayMessage * msg)
-    {
-        BlackRoot::Util::Cout{} << "HMMM";
-    };
+    Conduits::BaseNexus::MessageFunc message_func = this->Send_On_From_Conduit_Func;
 
     Conduits::Raw::IOpenConduitHandler::ResultData data;
 

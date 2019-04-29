@@ -33,6 +33,7 @@ namespace Base {
 		using ConnexionPtr		    = std::weak_ptr<void>;
 		using ConnexionPtrShared    = std::shared_ptr<void>;
         using OpenConduitFunc       = Conduits::IBaseMessage::OpenConduitFunc;
+        using SendOnFromConduitFunc = std::function<void(Conduits::Raw::ConduitRef, Conduits::Raw::IRelayMessage*)>;
 
 		struct SocketConnexionProperties {
 			std::chrono::system_clock::time_point  Connexion_Established;
@@ -54,6 +55,17 @@ namespace Base {
         };
         using PendingMessageMap  = std::map<Conduits::Raw::IRelayMessage*, PendingMessageProp>;
 
+        struct PendingReplyProp {
+            Conduits::Raw::IRelayMessage  *Message_Waiting_For_Reply;
+        };
+        using PendingReplyMap    = std::map<uint32, PendingReplyProp>;
+
+        struct SendOnFromConduitProp {
+            ConnexionPtrShared    Connexion;
+            uint32                Receiver_ID;
+        };
+        using SendOnFromConduitMap    = std::map<Conduits::Raw::ConduitRef, SendOnFromConduitProp>;
+
         using RlMessage          = Conduits::Raw::IRelayMessage;
 
         using SockMap            = std::map<ConnexionPtrShared, SockProp>;
@@ -67,8 +79,16 @@ namespace Base {
         Conduits::NexusHolder<>    Message_Nexus;
         Conduits::Raw::ConduitRef  En_Passant_Conduit;
         OpenConduitFunc            Open_Conduit_Func;
+        
+        std::shared_mutex          Mx_Send_On_From_Conduit;
+        SendOnFromConduitFunc      Send_On_From_Conduit_Func;
+        SendOnFromConduitMap       Send_On_From_Conduit_Map;
+        
+        std::shared_mutex          Mx_Pending_Reply;
+        PendingReplyMap            Pending_Reply_Map;
 
         std::vector<ListenThreadRef>    Listen_Threads;
+        ListenThreadRef                 Nexus_Listen_Thread;
         
         std::shared_mutex          Mx_Whitelist;
         std::vector<WhitelistTest> Whitelisted_Address_Test;
@@ -77,6 +97,8 @@ namespace Base {
         std::mutex                 Mx_Pending_Messages;
         PendingMessageMap          Pending_Message_Map;
 
+        std::atomic<uint32>        Unique_Reply_ID;
+
         //virtual void internal_server_listen();
         //virtual void internal_server_talk();
 
@@ -84,12 +106,14 @@ namespace Base {
         virtual void internal_async_handle_http(std::string path, JSON header, HandleHttpCallback);
 		
         virtual bool internal_async_open_conduit_func(Conduits::Raw::INexus *, Conduits::Raw::IRelayMessage *, Conduits::Raw::IOpenConduitHandler *) noexcept;
+        virtual void internal_send_on_from_conduit_func(Conduits::Raw::ConduitRef, Conduits::Raw::IRelayMessage*);
 
 		virtual void internal_async_close_connexion(ConnexionPtr sender);
 		virtual void internal_async_receive_message(ConnexionPtr sender, const std::string & payload);
 		virtual void internal_async_handle_message(ConnexionPtrShared, SockProp & prop, Conduits::Protocol::MessageScratch &);
 		virtual void internal_async_send_message(ConnexionPtr sender, const std::string & payload);
 
+        uint32  get_unique_reply_id();
         //virtual bool internal_receive_ad_hoc_command(ConnexionPtr, std::string);
     public:
         Socketman();
