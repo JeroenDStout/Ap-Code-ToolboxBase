@@ -155,6 +155,7 @@
     <ClCompile Include="..\Pubc\Base Socketman.cpp" />
     <ClCompile Include="../Pubc/Environment Bootstrap.cpp" />
     <ClCompile Include="../Pubc/Interface Environment.cpp" />
+    <ClCompile Include="..\Pubc\Base Socketman WSServer.h" />
     <ClCompile Include="..\Pubc\Entry.cpp" />
     <ClCompile Include="..\Pubc\Version.cpp" />
   </ItemGroup>

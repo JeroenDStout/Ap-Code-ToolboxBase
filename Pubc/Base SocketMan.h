@@ -18,6 +18,7 @@
 #include "Conduits/Pubc/Savvy Relay Receiver.h"
 #include "Conduits/Pubc/Websocket Protocol What-ho.h"
 #include "Conduits/Pubc/Websocket Protocol Messages.h"
+#include "Conduits/Pubc/Base Nexus Message.h"
 
 #include "ToolboxBase/Pubc/Interface Socketman.h"
 
@@ -30,102 +31,113 @@ namespace Base {
     public:
         using JSON                  = BlackRoot::Format::JSON;
         using HandleHttpCallback    = std::function<void(JSON header, std::string body)>;
-		using ConnexionPtr		    = std::weak_ptr<void>;
-		using ConnexionPtrShared    = std::shared_ptr<void>;
-        using OpenConduitFunc       = Conduits::IBaseMessage::OpenConduitFunc;
-        using SendOnFromConduitFunc = std::function<void(Conduits::Raw::ConduitRef, Conduits::Raw::IRelayMessage*)>;
 
-		struct SocketConnexionProperties {
+        using ConduitRef            = Conduits::Raw::ConduitRef;
+        using IMessage              = Conduits::Raw::IMessage;
+        using INexus                = Conduits::Raw::INexus;
+
+        using OpenConduitFunc       = Conduits::BaseNexusMessage::OpenConduitFunc;
+        using SendOnFromConduitFunc = std::function<void(Conduits::Raw::ConduitRef, IMessage*)>;
+
+		using WSConnexionPtr		= std::weak_ptr<void>;
+		using WSConnexionPtrShared  = std::shared_ptr<void>;
+
+		struct WebSocketConnexionProperties {
 			std::chrono::system_clock::time_point  Connexion_Established;
 			Conduits::Protocol::ClientProperties   Client_Prop;
 		};
-        using SockProp = SocketConnexionProperties;
+        using WSProp = WebSocketConnexionProperties;
 
 	protected:
-        class Server;
-        friend Server;
+            // Declared in cpp, internal server
+
+        class WSServer;
+        friend WSServer;
+        std::unique_ptr<WSServer> Internal_WSServer;
+
+            // Running threads
 
         using ListenThreadRef    = std::unique_ptr<std::thread>;
         
+        std::vector<ListenThreadRef> Listen_Threads;
+        ListenThreadRef              Nexus_Listen_Thread;
+
+            // Whitelisting IPs and addresses
+
         using WhitelistTest      = std::pair<std::string, std::regex>;
         using WhitelistMap       = std::map<std::string, std::string>;
-
-        struct PendingMessageProp {
-            Conduits::Raw::ConduitRef   Reply_To_Me_ID;
-        };
-        using PendingMessageMap  = std::map<Conduits::Raw::IRelayMessage*, PendingMessageProp>;
-
-        struct PendingReplyProp {
-            Conduits::Raw::IRelayMessage  *Message_Waiting_For_Reply;
-        };
-        using PendingReplyMap    = std::map<uint32, PendingReplyProp>;
-
-        struct SendOnFromConduitProp {
-            ConnexionPtrShared    Connexion;
-            uint32                Receiver_ID;
-        };
-        using SendOnFromConduitMap    = std::map<Conduits::Raw::ConduitRef, SendOnFromConduitProp>;
-
-        using RlMessage          = Conduits::Raw::IRelayMessage;
-
-        using SockMap            = std::map<ConnexionPtrShared, SockProp>;
-
-        Server  *Internal_Server;
-		
-        std::shared_mutex          Mx_Socket_Connexions;
-		SockMap					   Socket_Connexions;
-
-        std::shared_mutex          Mx_Nexus;
-        Conduits::NexusHolder<>    Message_Nexus;
-        Conduits::Raw::ConduitRef  En_Passant_Conduit;
-        OpenConduitFunc            Open_Conduit_Func;
-        
-        std::shared_mutex          Mx_Send_On_From_Conduit;
-        SendOnFromConduitFunc      Send_On_From_Conduit_Func;
-        SendOnFromConduitMap       Send_On_From_Conduit_Map;
-        
-        std::shared_mutex          Mx_Pending_Reply;
-        PendingReplyMap            Pending_Reply_Map;
-
-        std::vector<ListenThreadRef>    Listen_Threads;
-        ListenThreadRef                 Nexus_Listen_Thread;
         
         std::shared_mutex          Mx_Whitelist;
         std::vector<WhitelistTest> Whitelisted_Address_Test;
         WhitelistMap               Whitelisted_Addresses;
 
-        std::mutex                 Mx_Pending_Messages;
-        PendingMessageMap          Pending_Message_Map;
+            // Messages sent away, waiting reply
+            
+        struct SentAwayPendingReplyProp {
+            IMessage  *Message_Waiting_For_Reply;
+        };
+        using PendingReplyMap = std::map<uint32, SentAwayPendingReplyProp>;
+        
+        std::shared_mutex       Mx_Pending_Reply;
+        PendingReplyMap         Pending_Reply_Map;
 
+            // Handling sockets
+
+        using WSMap = std::map<WSConnexionPtrShared, WSProp>;
+        
+        std::shared_mutex       Mx_Web_Socket_Connexions;
+		WSMap			        Web_Socket_Connexions;
+
+            // Handling nexus
+		
+        std::shared_mutex       Mx_Nexus;
+        Conduits::NexusHolder<> Message_Nexus;
+        ConduitRef              En_Passant_Conduit;
+        OpenConduitFunc         Open_Conduit_Func;
+        
+        struct ConduitToSocketProp {
+            ConduitRef              Conduit;
+            WSConnexionPtrShared    Connexion;
+            uint32                  Receiver_ID;
+        };
+        using ConduitToSocketMap    = std::map<ConduitRef, ConduitToSocketProp>;
+
+        std::shared_mutex       Mx_Conduit_To_Socket_Relay;
+        SendOnFromConduitFunc   Conduit_To_Socket_Func;
+        ConduitToSocketMap      Conduit_To_Socket_Map;
+
+            // IDs
+        
         std::atomic<uint32>        Unique_Reply_ID;
 
-        //virtual void internal_server_listen();
-        //virtual void internal_server_talk();
+        uint32  get_unique_reply_id();
+        
+            // Handling
 
         virtual bool internal_check_connexion_is_allowed(std::string ip, std::string port);
         virtual void internal_async_handle_http(std::string path, JSON header, HandleHttpCallback);
+		virtual void internal_async_close_connexion(WSConnexionPtr sender);
+		virtual void internal_async_receive_message(WSConnexionPtr sender, const std::string & payload);
+		virtual void internal_async_handle_message(WSConnexionPtrShared, WSProp & prop, Conduits::Protocol::MessageScratch &);
+		virtual void internal_async_send_message(WSConnexionPtr sender, const std::string & payload);
 		
-        virtual bool internal_async_open_conduit_func(Conduits::Raw::INexus *, Conduits::Raw::IRelayMessage *, Conduits::Raw::IOpenConduitHandler *) noexcept;
-        virtual void internal_send_on_from_conduit_func(Conduits::Raw::ConduitRef, Conduits::Raw::IRelayMessage*);
+            // Conduits
 
-		virtual void internal_async_close_connexion(ConnexionPtr sender);
-		virtual void internal_async_receive_message(ConnexionPtr sender, const std::string & payload);
-		virtual void internal_async_handle_message(ConnexionPtrShared, SockProp & prop, Conduits::Protocol::MessageScratch &);
-		virtual void internal_async_send_message(ConnexionPtr sender, const std::string & payload);
+        virtual bool internal_async_open_conduit_func(INexus *, IMessage *, Conduits::Raw::IOpenConduitHandler *) noexcept;
+        virtual void internal_conduit_to_socket_func(ConduitRef, IMessage*);
 
-        uint32  get_unique_reply_id();
-        //virtual bool internal_receive_ad_hoc_command(ConnexionPtr, std::string);
+
     public:
         Socketman();
         ~Socketman() override;
+
+            // Implement ISocketman
 
         void    initialise(const JSON param) override;
         void    deinitialise_and_wait(const JSON param) override;
 
         Conduits::Raw::INexus * get_en_passant_nexus() override;
         void    connect_en_passant_conduit(Conduits::Raw::ConduitRef) override;
-
-        //virtual int GetDefaultPort() { return 3001; }
 	};
 
 }

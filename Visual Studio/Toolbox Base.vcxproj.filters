@@ -13,6 +13,9 @@
     <Filter Include="Meta">
       <UniqueIdentifier>{9c28da7f-c311-4967-8257-a4e1e25782a6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Sockets">
+      <UniqueIdentifier>{2795b0dc-4b94-4a2c-a445-b3dc48d65756}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../Pubc/Base Environment.cpp">
@@ -34,7 +37,10 @@
       <Filter>Environment</Filter>
     </ClCompile>
     <ClCompile Include="..\Pubc\Base Socketman.cpp">
-      <Filter>Environment</Filter>
+      <Filter>Sockets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Pubc\Base Socketman WSServer.h">
+      <Filter>Sockets</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -66,7 +72,7 @@
       <Filter>Environment</Filter>
     </ClInclude>
     <ClInclude Include="..\Pubc\Base Socketman.h">
-      <Filter>Environment</Filter>
+      <Filter>Sockets</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
