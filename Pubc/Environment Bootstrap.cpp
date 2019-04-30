@@ -90,24 +90,42 @@ bool EnvironmentBootstrap::execute_from_json(const JSON json)
 
                     // Create an await message holding our stringified JSON
                 Conduits::BaseAwaitMessage await;
-                await.Path = Conduits::Util::Sanitise_Path(el2.begin().key());
-                await.Message_Segments[0] = el2.begin().value().dump();
+                await.set_message_string_as_path(el2.begin().key());
+                await.Segment_Map[""] = el2.begin().value().dump();
 
                     // Prepare, send, and await; env is running this asynch
                 await.sender_prepare_for_send();
                 this->Environment->async_receive_message(&await);
                 await.sender_await();
+                
+                auto * resp_msg = await.Response;
+                auto * resp_string = resp_msg ? resp_msg->get_message_string() : nullptr;
 
                     // If we fail, print a reason and abort startup
-                if (await.Message_State != Conduits::MessageState::ok) {
-                    cout{} << "<## " << await.Response_String << std::endl
-                           << "    Error in serious startup!" << std::endl;
+                if (await.Message_State != Conduits::BaseAwaitMessage::MessageState::ok) {
+                    if (resp_string) {
+                        cout{} << "<## " << resp_string << std::endl
+                               << "    Error in serious startup!" << std::endl;
+                    }
+                    else {
+                        cout{} << "    Error in serious startup!" << std::endl;
+                    }
+                    
+                    if (resp_msg) {
+                        resp_msg->set_OK();
+                        resp_msg->release();
+                    }
                     return false;
                 }
             
                     // If there is a meaningful response, print it
-                if (await.Response_String.length() > 0) {
-                    cout{} << "< " << await.Response_String << std::endl;
+                if (resp_string) {
+                    cout{} << "< " << resp_string << std::endl;
+                }
+
+                if (resp_msg) {
+                    resp_msg->set_OK();
+                    resp_msg->release();
                 }
             }
         }
