@@ -42,19 +42,20 @@ BaseEnvironment::BaseEnvironment()
     this->Logman      = nullptr;
     this->Socketman   = nullptr;
 
-    this->Message_Nexus->set_ad_hoc_message_handling([=](Conduits::Raw::ConduitRef, Conduits::Raw::IRelayMessage * msg){
-        this->rmr_handle_message_immediate_and_release(msg);
-    });
+    this->Message_Nexus->set_ad_hoc_message_handling(
+        std::bind(&BaseEnvironment::rmr_handle_message_immediate_and_release, this, std::placeholders::_1)
+    );
 
-    this->Simple_Relay.Call_Map["env"] = [=](Conduits::Raw::IRelayMessage * msg) {
-        this->rmr_handle_message_immediate_and_release(msg);
-    };
+        // Add base relays
 
-    this->Simple_Relay.Call_Map["web"] = [=](Conduits::Raw::IRelayMessage * msg) {
-		this->internal_handle_web_request(msg->get_adapting_path(), msg);
+    this->Simple_Relay.Call_Map["env"] =
+        std::bind(&BaseEnvironment::rmr_handle_message_immediate_and_release, this, std::placeholders::_1);
+
+    this->Simple_Relay.Call_Map["web"] = [=](Conduits::Raw::IMessage * msg) {
+		this->internal_handle_web_request(msg->get_adapting_string(), msg);
         msg->release();
     };
-    this->Simple_Relay.Call_Map["favicon.ico"] = [=](Conduits::Raw::IRelayMessage * msg) {
+    this->Simple_Relay.Call_Map["favicon.ico"] = [=](Conduits::Raw::IMessage * msg) {
 		this->internal_handle_web_request(this->internal_get_favicon_name(), msg);
         msg->release();
     };
@@ -73,14 +74,18 @@ void BaseEnvironment::run_with_current_thread()
 
     this->internal_init_stats();
 
-    cout{} << "~*~*~ Environment Running ~*~*~" << std::endl;
+    cout{} << std::endl << "~*~*~ Environment Running ~*~*~" << std::endl << std::endl;
     
+    this->Message_Nexus->start_accepting_messages();
     this->Message_Nexus->start_accepting_threads();
+
     while (!this->internal_get_thread_should_interrupt()) {
         this->Message_Nexus->await_message_and_handle();
     }
 
-    cout{} << "~*~*~ Environment Closing ~*~*~" << std::endl;
+    this->Message_Nexus->stop_gracefully();
+
+    cout{} << std::endl << "~*~*~ Environment Closing ~*~*~" << std::endl << std::endl;
 }
 
 void BaseEnvironment::async_close()
@@ -137,20 +142,21 @@ void BaseEnvironment::create_socketman(const JSON json)
 
         // We assume that socketman should route its en passant
         // messages to us, so set up the conduit
-
     Conduits::BaseNexus::InfoFunc info_func =
         [this](Conduits::Raw::ConduitRef, const Conduits::ConduitUpdateInfo)
     {
     };
     Conduits::BaseNexus::MessageFunc message_message =
-        [this](Conduits::Raw::ConduitRef, Conduits::Raw::IRelayMessage * msg)
+        [this](Conduits::Raw::ConduitRef, Conduits::Raw::IMessage * msg)
     {
         this->rmr_handle_message_immediate_and_release(msg);
     };
 
+        // Open the conduit for us and socketman
     auto id = this->Message_Nexus->manual_open_conduit_to(this->Socketman->get_en_passant_nexus(), info_func, message_message);
     this->Socketman->connect_en_passant_conduit(id.second);
 
+        // Add socketman reference
     this->Simple_Relay.Call_Map["sock"] = std::bind(&Core::ISocketman::rmr_handle_message_immediate, this->Socketman, _1);
 }
 
@@ -259,14 +265,16 @@ BaseEnvironment::FilePath BaseEnvironment::get_user_dir()
     return this->Env_Props.User_Dir;
 }
 
-void BaseEnvironment::internal_handle_web_request(std::string path, Conduits::Raw::IRelayMessage * msg)
+void BaseEnvironment::internal_handle_web_request(std::string path, Conduits::Raw::IMessage * msg)
 {
-	// TODO: this is just a placeholding sketch
-	
+        // Quick and dirty way of having the conduits
+        // server handle these rqeuests
+        // TODO: less dirty way
     BlackRoot::IO::BaseFileSource s;
     Conduits::Util::HttpFileServer server;
     server.Inner_Source = &s;
     server.handle(this->get_ref_dir() / "Web", path.c_str(), msg);
+
     msg->set_OK();
 }
 
@@ -325,49 +333,57 @@ void BaseEnvironment::savvy_handle_http(const JSON httpRequest, JSON & httpReply
     //  Messages
     // --------------------
 
-void BaseEnvironment::async_receive_message(Conduits::Raw::IRelayMessage * msg)
+void BaseEnvironment::async_receive_message(Conduits::Raw::IMessage * msg)
 {
     this->Message_Nexus->async_add_ad_hoc_message(msg);
 }
 
-void BaseEnvironment::_create_logman(Conduits::Raw::IRelayMessage * msg) noexcept
+void BaseEnvironment::_create_logman(Conduits::Raw::IMessage * msg) noexcept
 {
-    this->savvy_try_wrap_read_json(msg, 0, [&](JSON json) {
+    this->savvy_try_wrap_read_json(msg, "", [&](JSON json) {
         DbAssertMsgFatal(!this->Logman, "Logman already exists");
         this->create_logman(json);
         msg->set_OK();
     });
 }
 
-void BaseEnvironment::_create_socketman(Conduits::Raw::IRelayMessage * msg) noexcept
+void BaseEnvironment::_create_socketman(Conduits::Raw::IMessage * msg) noexcept
 {
-    this->savvy_try_wrap_read_json(msg, 0, [&](JSON json) {
+    this->savvy_try_wrap_read_json(msg, "", [&](JSON json) {
         DbAssertMsgFatal(!this->Socketman, "Socketman already exists");
         this->create_socketman(json);
         msg->set_OK();
     });
 }
 
-void BaseEnvironment::_stats(Conduits::Raw::IRelayMessage * msg) noexcept
+void BaseEnvironment::_stats(Conduits::Raw::IMessage * msg) noexcept
 {
-    this->savvy_try_wrap_write_json(msg, 0, [&] {
+    this->savvy_try_wrap(msg, [&] {
         JSON ret;
         this->internal_compile_stats(ret);
+        
+            // Dump stats json in nameless segment
+        std::unique_ptr<Conduits::DisposableMessage> reply(new Conduits::DisposableMessage());
+        reply->Segment_Map[""] = ret.dump();
+
+        msg->set_response(reply.release());
         msg->set_OK();
-        return ret;
     });
 }
 
-void BaseEnvironment::_code_credits(Conduits::Raw::IRelayMessage * msg) noexcept
+void BaseEnvironment::_code_credits(Conduits::Raw::IMessage * msg) noexcept
 {
-    this->savvy_try_wrap_write_json(msg, 0, [&] {
-        JSON ret = { BlackRoot::Repo::VersionRegistry::GetBootString() };
+    this->savvy_try_wrap(msg, [&] {
+            // Set message to boot string
+        std::unique_ptr<Conduits::DisposableMessage> reply(new Conduits::DisposableMessage());
+        reply->Message_String = BlackRoot::Repo::VersionRegistry::GetBootString();
+        
+        msg->set_response(reply.release());
         msg->set_OK();
-        return ret;
     });
 }
 
-void BaseEnvironment::_set_ref_dir(Conduits::Raw::IRelayMessage * msg) noexcept
+void BaseEnvironment::_set_ref_dir(Conduits::Raw::IMessage * msg) noexcept
 {
     using cout = BlackRoot::Util::Cout;
 
@@ -378,17 +394,24 @@ void BaseEnvironment::_set_ref_dir(Conduits::Raw::IRelayMessage * msg) noexcept
         }
         DbAssertMsgFatal(json.is_string(), "Malformed JSON: cannot get path");
         
+            // Internally update reference dir
         this->set_ref_dir(json.get<JSON::string_t>());
 
-        std::string rt = "Ref dir has been set to ";
-        rt += this->get_ref_dir().string();
+            // Confirm, if needed, the effective reference dir
+        if (Conduits::Raw::ResponseDesire::response_is_possible(msg->get_response_expectation())) {
+            std::string rt = "Ref dir has been set to ";
+            rt += this->get_ref_dir().string();
 
-        msg->set_response_string_with_copy(rt.c_str());
+            std::unique_ptr<Conduits::DisposableMessage> reply(new Conduits::DisposableMessage());
+            reply->Message_String = rt;
+            msg->set_response(reply.release());
+        }
+
         msg->set_OK();
     });
 }
 
-void BaseEnvironment::_set_user_dir(Conduits::Raw::IRelayMessage * msg) noexcept
+void BaseEnvironment::_set_user_dir(Conduits::Raw::IMessage * msg) noexcept
 {
     using cout = BlackRoot::Util::Cout;
 
@@ -399,17 +422,24 @@ void BaseEnvironment::_set_user_dir(Conduits::Raw::IRelayMessage * msg) noexcept
         }
         DbAssertMsgFatal(json.is_string(), "Malformed JSON: cannot get path");
         
+            // Internally update user dir
         this->set_user_dir(json.get<JSON::string_t>());
 
-        std::string rt = "User documents dir has been set to ";
-        rt += this->get_user_dir().string();
+            // Confirm, if needed, the effective user dir
+        if (Conduits::Raw::ResponseDesire::response_is_possible(msg->get_response_expectation())) {
+            std::string rt = "User dir has been set to ";
+            rt += this->get_user_dir().string();
 
-        msg->set_response_string_with_copy(rt.c_str());
+            std::unique_ptr<Conduits::DisposableMessage> reply(new Conduits::DisposableMessage());
+            reply->Message_String = rt;
+            msg->set_response(reply.release());
+        }
+
         msg->set_OK();
     });
 }
 
-void BaseEnvironment::_ping(Conduits::Raw::IRelayMessage * msg) noexcept
+void BaseEnvironment::_ping(Conduits::Raw::IMessage * msg) noexcept
 {
     using cout = BlackRoot::Util::Cout;
     cout{} << '\a' << "(pong)" << std::endl;
@@ -417,14 +447,14 @@ void BaseEnvironment::_ping(Conduits::Raw::IRelayMessage * msg) noexcept
     BlackRoot::System::PlayAdHocSound(this->get_ref_dir() / "Data/ping.wav");
     BlackRoot::System::FlashCurrentWindow();
 
-    this->savvy_try_wrap_write_json(msg, 0, [&] {
-        JSON ret = { "pong" };
-        msg->set_OK();
-        return ret;
+    this->savvy_try_wrap(msg, [&] {
+        std::unique_ptr<Conduits::DisposableMessage> reply(new Conduits::DisposableMessage());
+        reply->Message_String = "(pong)";
+        msg->set_response(reply.release());
     });
 }
 
-void BaseEnvironment::_close(Conduits::Raw::IRelayMessage * msg) noexcept
+void BaseEnvironment::_close(Conduits::Raw::IMessage * msg) noexcept
 {
     using cout = BlackRoot::Util::Cout;
     

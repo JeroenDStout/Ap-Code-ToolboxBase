@@ -40,7 +40,7 @@ namespace Core {
         virtual void run_with_current_thread() = 0;
         virtual void async_close() = 0;
 
-        virtual void async_receive_message(Conduits::Raw::IRelayMessage *) = 0;
+        virtual void async_receive_message(Conduits::Raw::IMessage *) = 0;
 
             // Util
 

@@ -73,7 +73,7 @@ namespace Base {
             // Web
         
         virtual std::string internal_get_favicon_name() { return ""; }
-        virtual void internal_handle_web_request(std::string path, Conduits::Raw::IRelayMessage *);
+        virtual void internal_handle_web_request(std::string path, Conduits::Raw::IMessage *);
         
     public:
         BaseEnvironment();
@@ -98,7 +98,7 @@ namespace Base {
             // Util
 
         bool get_is_running() override;
-        void async_receive_message(Conduits::Raw::IRelayMessage *) override;
+        void async_receive_message(Conduits::Raw::IMessage *) override;
 
         virtual FilePath expand_dir(FilePath) override;
         
