@@ -365,6 +365,7 @@ void BaseEnvironment::_stats(Conduits::Raw::IMessage * msg) noexcept
             // Dump stats json in nameless segment
         std::unique_ptr<Conduits::DisposableMessage> reply(new Conduits::DisposableMessage());
         reply->Segment_Map[""] = ret.dump();
+        reply->sender_prepare_for_send();
 
         msg->set_response(reply.release());
         msg->set_OK();
@@ -377,6 +378,7 @@ void BaseEnvironment::_code_credits(Conduits::Raw::IMessage * msg) noexcept
             // Set message to boot string
         std::unique_ptr<Conduits::DisposableMessage> reply(new Conduits::DisposableMessage());
         reply->Message_String = BlackRoot::Repo::VersionRegistry::GetBootString();
+        reply->sender_prepare_for_send();
         
         msg->set_response(reply.release());
         msg->set_OK();
@@ -404,6 +406,7 @@ void BaseEnvironment::_set_ref_dir(Conduits::Raw::IMessage * msg) noexcept
 
             std::unique_ptr<Conduits::DisposableMessage> reply(new Conduits::DisposableMessage());
             reply->Message_String = rt;
+            reply->sender_prepare_for_send();
             msg->set_response(reply.release());
         }
 
@@ -432,6 +435,7 @@ void BaseEnvironment::_set_user_dir(Conduits::Raw::IMessage * msg) noexcept
 
             std::unique_ptr<Conduits::DisposableMessage> reply(new Conduits::DisposableMessage());
             reply->Message_String = rt;
+            reply->sender_prepare_for_send();
             msg->set_response(reply.release());
         }
 
@@ -441,16 +445,18 @@ void BaseEnvironment::_set_user_dir(Conduits::Raw::IMessage * msg) noexcept
 
 void BaseEnvironment::_ping(Conduits::Raw::IMessage * msg) noexcept
 {
-    using cout = BlackRoot::Util::Cout;
-    cout{} << '\a' << "(pong)" << std::endl;
-
-    BlackRoot::System::PlayAdHocSound(this->get_ref_dir() / "Data/ping.wav");
-    BlackRoot::System::FlashCurrentWindow();
-
     this->savvy_try_wrap(msg, [&] {
+        using cout = BlackRoot::Util::Cout;
+        cout{} << '\a' << "(pong)" << std::endl;
+    
+        BlackRoot::System::PlayAdHocSound(this->get_ref_dir() / "Data/ping.wav");
+        BlackRoot::System::FlashCurrentWindow();
+
         std::unique_ptr<Conduits::DisposableMessage> reply(new Conduits::DisposableMessage());
         reply->Message_String = "(pong)";
+        reply->sender_prepare_for_send();
         msg->set_response(reply.release());
+        msg->set_OK();
     });
 }
 
