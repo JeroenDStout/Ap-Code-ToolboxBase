@@ -16,9 +16,10 @@
 #include "Conduits/Pubc/Interface Nexus.h"
 #include "Conduits/Pubc/Base Message.h"
 #include "Conduits/Pubc/Savvy Relay Receiver.h"
+#include "Conduits/Pubc/Base Nexus.h"
+#include "Conduits/Pubc/Base Nexus Message.h"
 #include "Conduits/Pubc/Websocket Protocol What-ho.h"
 #include "Conduits/Pubc/Websocket Protocol Messages.h"
-#include "Conduits/Pubc/Base Nexus Message.h"
 
 #include "ToolboxBase/Pubc/Interface Socketman.h"
 
@@ -53,14 +54,13 @@ namespace Base {
 
         class WSServer;
         friend WSServer;
-        std::unique_ptr<WSServer> Internal_WSServer;
+        WSServer * Internal_WSServer;
 
             // Running threads
 
         using ListenThreadRef    = std::unique_ptr<std::thread>;
         
-        std::vector<ListenThreadRef> Listen_Threads;
-        ListenThreadRef              Nexus_Listen_Thread;
+        std::vector<ListenThreadRef> WS_Listen_Threads;
 
             // Whitelisting IPs and addresses
 
@@ -74,7 +74,8 @@ namespace Base {
             // Messages sent away, waiting reply
             
         struct SentAwayPendingReplyProp {
-            IMessage  *Message_Waiting_For_Reply;
+            WSConnexionPtrShared    Connexion;
+            IMessage                *Message_Waiting_For_Reply;
         };
         using PendingReplyMap = std::map<uint32, SentAwayPendingReplyProp>;
         
@@ -96,7 +97,6 @@ namespace Base {
         OpenConduitFunc         Open_Conduit_Func;
         
         struct ConduitToSocketProp {
-            ConduitRef              Conduit;
             WSConnexionPtrShared    Connexion;
             uint32                  Receiver_ID;
         };
@@ -105,6 +105,9 @@ namespace Base {
         std::shared_mutex       Mx_Conduit_To_Socket_Relay;
         SendOnFromConduitFunc   Conduit_To_Socket_Func;
         ConduitToSocketMap      Conduit_To_Socket_Map;
+        
+        bool                         Should_Listen_To_Nexus;
+        std::vector<ListenThreadRef> Nexus_Listen_Threads;
 
             // IDs
         
@@ -120,12 +123,15 @@ namespace Base {
 		virtual void internal_async_receive_message(WSConnexionPtr sender, const std::string & payload);
 		virtual void internal_async_handle_message(WSConnexionPtrShared, WSProp & prop, Conduits::Protocol::MessageScratch &);
 		virtual void internal_async_send_message(WSConnexionPtr sender, const std::string & payload);
+
+		virtual uint32 internal_async_add_pending_message(WSConnexionPtr sender, IMessage*);
 		
             // Conduits
 
-        virtual bool internal_async_open_conduit_func(INexus *, IMessage *, Conduits::Raw::IOpenConduitHandler *) noexcept;
+        virtual bool internal_async_open_conduit_func(INexus *, Conduits::BaseNexusMessage *, Conduits::Raw::IOpenConduitHandler *) noexcept;
         virtual void internal_conduit_to_socket_func(ConduitRef, IMessage*);
 
+        virtual void internal_sync_remove_connexion(WSConnexionPtrShared);
 
     public:
         Socketman();

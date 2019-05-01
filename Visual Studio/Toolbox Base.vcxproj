@@ -152,6 +152,8 @@
   <ItemGroup>
     <ClCompile Include="..\Pubc\Base Logman.cpp" />
     <ClCompile Include="../Pubc/Base Environment.cpp" />
+    <ClCompile Include="..\Pubc\Base Socketman Http.cpp" />
+    <ClCompile Include="..\Pubc\Base Socketman Messages.cpp" />
     <ClCompile Include="..\Pubc\Base Socketman.cpp" />
     <ClCompile Include="../Pubc/Environment Bootstrap.cpp" />
     <ClCompile Include="../Pubc/Interface Environment.cpp" />
