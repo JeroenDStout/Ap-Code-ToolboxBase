@@ -23,6 +23,10 @@
 
 #include "ToolboxBase/Pubc/Interface Socketman.h"
 
+    // Debug override; set to 1 to enable
+    // some extra logging
+#define SOCKETMAN_PARANOIA 1
+
 namespace Toolbox {
 namespace Base {
     

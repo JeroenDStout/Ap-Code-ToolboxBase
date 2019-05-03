@@ -21,6 +21,44 @@ void Socketman::internal_async_handle_message(WSConnexionPtrShared sender, WSPro
 {
     using cout = BlackRoot::Util::Cout;
 
+#if SOCKETMAN_PARANOIA
+    {   std::stringstream ss;
+        ss << std::endl << "Msg:";
+        if (intr.get_is_response()) {
+            if (intr.get_is_OK()) {
+                ss << " V";
+            }
+            else {
+                ss << " X";
+            }
+            ss << " @" << intr.Recipient_ID;
+        }
+        else {
+            ss << " $" << intr.Recipient_ID;
+        }
+        if (intr.get_accepts_response()) {
+            ss << " %" << intr.Reply_To_Me_ID;
+        }
+        if (intr.get_confirm_open_conduit()) {
+            ss << " #" << intr.Opened_Conduit_ID;
+        }
+        if (intr.String_Length > 0) {
+            ss << " >" << intr.String;
+        }
+        for (auto & seg : intr.Segments) {
+            ss << std::endl << " * '" << seg.Name << "': ";
+            if (seg.Length < 40*5) {
+                ss.write((char*)seg.Data, seg.Length);
+            }
+            else {
+                ss.write((char*)seg.Data, 40*5);
+                ss << "...";
+            }
+        }
+        cout{} << ss.str() << std::endl;
+    }
+#endif
+
         // If the recipient ID is 0 and the connexion
         // does not require a response just take the easy
         // option and route it as a disposable message
