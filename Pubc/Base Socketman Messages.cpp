@@ -193,7 +193,6 @@ void Socketman::internal_async_handle_message(WSConnexionPtrShared sender, WSPro
 
                 std::unique_lock<std::shared_mutex> lk(this->Mx_Conduit_To_Socket_Relay);
                 this->Conduit_To_Socket_Map[msg->Conduit_ID] = { sender, reply_to_me };
-                return;
             }
         }
         else {
@@ -218,23 +217,28 @@ void Socketman::internal_async_handle_message(WSConnexionPtrShared sender, WSPro
             // to the scratch object, too
         if (msg->Response) {
             reply.String = msg->Response->get_message_string();
-            reply.String_Length = (uint16)strlen(reply.String);
+            reply.String_Length = reply.String ? (uint16)strlen(reply.String) : 0;
             reply.add_segments_from_message(msg->Response);
 
                 // If the response allows for a response we simply
                 // add it to the pending messages; otherwise we can
                 // simply release the response immediately
-            if (Conduits::Raw::ResponseDesire::response_is_possible(msg->get_response_expectation())) {
+            if (Conduits::Raw::ResponseDesire::response_is_possible(msg->get_response_expectation()) &&
+                Conduits::Raw::ResponseDesire::response_is_possible(msg->Response->get_response_expectation()))
+            {
                 reply.Reply_To_Me_ID = this->internal_async_add_pending_message(sender, msg->Response);
             }
-            else {
-                msg->Response->set_OK();
-                msg->Response->release();
-            }
         }
-
-		this->internal_async_send_message(sender, Conduits::Protocol::MessageScratch::try_stringify_message(reply));
+        
+        if (Conduits::Raw::ResponseDesire::response_is_possible(msg->get_response_expectation())) {
+		    this->internal_async_send_message(sender, Conduits::Protocol::MessageScratch::try_stringify_message(reply));
+        }
+        else if (msg->Response) {
+            msg->Response->set_OK();
+            msg->Response->release();
+        }
     };
+    msg->Open_Conduit_Func = this->Open_Conduit_Func;
 
         // Set up rest of msg
     msg->Message_String.assign(intr.String, intr.String_Length);
@@ -243,15 +247,22 @@ void Socketman::internal_async_handle_message(WSConnexionPtrShared sender, WSPro
     if (intr.get_accepts_response()) {
         msg->Response_Desire = Conduits::Raw::ResponseDesire::allowed;
     }
+    
+    msg->sender_prepare_for_send();
+    
+    this->Message_Nexus->setup_use_queue_for_release_event(msg);
 
     if (intr.get_is_response()) {
-        this->Message_Nexus->setup_use_queue_for_release_event(msg);
         original_msg->set_response(msg);
         original_msg->release();
         return;
     }
-    
-    this->Message_Nexus->setup_use_queue_for_release_event(msg);
+    if (intr.Recipient_ID == 0x0) {
+        std::shared_lock<std::shared_mutex> lk(this->Mx_Nexus);
+        this->Message_Nexus->send_on_conduit(this->En_Passant_Conduit, msg);
+        return;
+    }
+
     this->Message_Nexus->send_on_conduit(intr.Recipient_ID, msg);
 }
 
@@ -314,11 +325,13 @@ void Socketman::internal_sync_remove_connexion(WSConnexionPtrShared ptr)
         
         auto elem = this->Conduit_To_Socket_Map.begin();
         while (elem != this->Conduit_To_Socket_Map.end()) {
-            if (elem->second.Connexion != ptr)
-                continue;
+            if (elem->second.Connexion != ptr) {
+                elem++; continue;
+            }
                 
             this->Message_Nexus->close_conduit(elem->first);
-            elem = this->Conduit_To_Socket_Map.erase(elem);
+            this->Conduit_To_Socket_Map.erase(elem);
+            break;
         }
     }
 
