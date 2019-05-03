@@ -73,14 +73,11 @@ public:
 	}
 
 	void on_message(connexion hdl, server::message_ptr msg) {
-        using cout = BlackRoot::Util::Cout;
-        
 		server::connection_ptr con = this->get_con_from_hdl(hdl);
         if (!con)
             return;
 		
         const auto & payload = msg->get_payload();
-		cout{} << "msg: " << payload << std::endl;
 
 		this->socketman->internal_async_receive_message(con, msg->get_payload());
 	}
