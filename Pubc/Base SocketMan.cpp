@@ -260,7 +260,7 @@ void Socketman::internal_async_receive_message(WSConnexionPtr sender, const std:
             prop.Connexion_Established = std::chrono::system_clock::now();
             prop.Client_Prop = std::move(client_prop);
 			    
-            cout{} << "New websocket connexion:" << std::endl << " " << prop.Client_Prop.Name << std::endl << " " << prop.Client_Prop.Name << std::endl;
+            cout{} << "New websocket connexion:" << std::endl << " " << prop.Client_Prop.Name << std::endl << " " << prop.Client_Prop.Version << std::endl;
         }
 		catch (std::exception e)
 		{
