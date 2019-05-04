@@ -6,6 +6,7 @@
 
 #include "BlackRoot/Pubc/Assert.h"
 #include "BlackRoot/Pubc/Version Reg.h"
+#include "BlackRoot/Pubc/First.h"
 #include "BlackRoot/Pubc/Threaded IO Stream.h"
 #include "BlackRoot/Pubc/Sys Path.h"
 #include "BlackRoot/Pubc/Sys Sound.h"
@@ -283,6 +284,7 @@ void BaseEnvironment::internal_handle_web_request(std::string path, Conduits::Ra
 
 void BaseEnvironment::savvy_handle_http(const JSON httpRequest, JSON & httpReply, std::string & outBody)
 {
+    BlackRoot::Util::First first;
     std::stringstream ss;
     
     const auto & class_name = this->internal_get_rmr_class_name();
@@ -294,11 +296,11 @@ void BaseEnvironment::savvy_handle_http(const JSON httpRequest, JSON & httpReply
 		<< " <head>" << std::endl
 		<< "  <title>" << main_proj.Name << " - Base Environment</title>" << std::endl
 		<< " </head>" << std::endl
-		<< " <body>" << std::endl
+		<< " <body style=\"padding: 1em 2em 2em 2em\">" << std::endl
 		<< "  <h1>" << main_proj.Name << "</h1>" << std::endl
-		<< "  <p>" << main_proj.Version << "<br/>" << main_proj.BuildTool << "</p>" << std::endl
+		<< "  <div style=\"padding-left:.5em\">" << main_proj.Version << "<br/>" << main_proj.BuildTool << "</div>" << std::endl
 		<< "  <h1>" << class_name << " (base relay)</h1>" << std::endl
-		<< "  <p>" << this->html_create_action_relay_string() << "</p>" << std::endl;
+		<< "  <div style=\"padding-left:.5em\">" << this->html_create_action_relay_string() << "</div>" << std::endl;
 
         // Print contribution and version strings
     std::string version;
@@ -311,18 +313,46 @@ void BaseEnvironment::savvy_handle_http(const JSON httpRequest, JSON & httpReply
         version.replace(start_pos, from.length(), to);
         start_pos += to.length();
     }
+
+	ss << "  <h1>About</h1>" << std::endl;
+
+    ss << "  <div style=\"margin-top:1em\"><b>Statically linked</b><div style=\"padding-left:.5em\">";
     
-    std::string contribution;
-    contribution = registry->GetFullContributionString();
-    start_pos = 0;
-    while((start_pos = contribution.find(from, start_pos)) != std::string::npos) {
-        contribution.replace(start_pos, from.length(), to);
-        start_pos += to.length();
+    first.reset();
+    for (auto & elem : BlackRoot::Repo::VersionRegistry::GetRegistry()->GetVersionList()) {
+        ss << "<div style=\"margin-bottom:0.25em\">";
+        ss << elem.Name << " " << elem.Version << " (" << elem.BranchName << ")<br/>";
+        ss << elem.Licence << "<br/>";
+        ss << elem.BuildTool << "</div>";
     }
 
-	ss << "  <h1>About</h1>" << std::endl
-	   << "  <p>" << contribution << "</p>" << std::endl
-	   << "  <p>" << version << "</p>" << std::endl;
+	ss  << "</div></div>" << std::endl;
+
+    ss << "  <div style=\"margin-top:1em\"><b>This software contains contributions by</b><div style=\"padding-left:.5em;margin-top:0px\">";
+    
+    first.reset();
+    for (auto & elem : BlackRoot::Repo::VersionRegistry::GetRegistry()->GetFullProjectContributors().Contibutors) {
+        if (!first) ss << "<br/>";
+	    ss << elem.Name;
+    }
+
+    ss << "</div></div>" << std::endl << "  <div style=\"margin-top:1em\"><b>And is built using</b><div style=\"padding-left:.5em;margin-top:0px\">";
+
+    first.reset();
+    for (auto & elem : BlackRoot::Repo::VersionRegistry::GetRegistry()->GetFullProjectLibraries().Libraries) {
+        if (!first) ss << "<br/>";
+        if (elem.Url.size() > 0) {
+	        ss << "<a href=\"http://" << elem.Url << "\">" << elem.Name << "</a>";
+        }
+        else {
+	        ss << elem.Name;
+        }
+        if (elem.Creator.size() > 0) {
+	        ss << " by " << elem.Creator;
+        }
+    }
+
+	ss  << "</div></div>" << std::endl;
 
     ss  << " </body>" << std::endl
 		<< "</html>";
