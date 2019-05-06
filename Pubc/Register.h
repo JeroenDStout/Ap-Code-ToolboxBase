@@ -4,6 +4,10 @@
 
 #pragma once
 
+    // Static Dependencies
+
+#include "BlackRoot/Pubc/Register.h"
+
     // Register version
 
 #include "ToolboxBase/Pubc/Version.h"
