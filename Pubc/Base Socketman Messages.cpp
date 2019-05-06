@@ -47,11 +47,11 @@ void Socketman::internal_async_handle_message(WSConnexionPtrShared sender, WSPro
         }
         for (auto & seg : intr.Segments) {
             ss << std::endl << " * '" << seg.Name << "': ";
-            if (seg.Length < 40*5) {
+            if (seg.Length < 800) {
                 ss.write((char*)seg.Data, seg.Length);
             }
             else {
-                ss.write((char*)seg.Data, 40*5);
+                ss.write((char*)seg.Data, 797);
                 ss << "...";
             }
         }
