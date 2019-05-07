@@ -6,6 +6,7 @@
 #include "BlackRoot/Pubc/Threaded IO Stream.h"
 
 #include "Conduits/Pubc/Disposable Message.h"
+#include "Conduits/Pubc/Path Tools.h"
 
 #include "ToolboxBase/Pubc/Base Environment.h"
 #include "ToolboxBase/Pubc/Base SocketMan.h"
@@ -242,6 +243,9 @@ void Socketman::internal_async_handle_message(WSConnexionPtrShared sender, WSPro
 
         // Set up rest of msg
     msg->Message_String.assign(intr.String, intr.String_Length);
+    if (!intr.get_is_response() && intr.Recipient_ID == 0) {
+        msg->Message_String = Conduits::Util::Sanitise_Path(msg->Message_String);
+    }
     msg->add_message_segments_from_list(intr.Segments);
 
     if (intr.get_accepts_response()) {
