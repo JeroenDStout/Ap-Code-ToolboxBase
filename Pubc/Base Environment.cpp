@@ -34,6 +34,7 @@ CON_RMR_REGISTER_FUNC(BaseEnvironment, create_logman);
 CON_RMR_REGISTER_FUNC(BaseEnvironment, create_socketman);
 CON_RMR_REGISTER_FUNC(BaseEnvironment, close);
 CON_RMR_REGISTER_FUNC(BaseEnvironment, ping);
+CON_RMR_REGISTER_FUNC(BaseEnvironment, beep);
 
     //  Setup
     // --------------------
@@ -477,15 +478,21 @@ void BaseEnvironment::_ping(Conduits::Raw::IMessage * msg) noexcept
 {
     this->savvy_try_wrap(msg, [&] {
         using cout = BlackRoot::Util::Cout;
-        cout{} << '\a' << "(pong)" << std::endl;
-    
-        BlackRoot::System::PlayAdHocSound(this->get_ref_dir() / "Data/ping.wav");
-        BlackRoot::System::FlashCurrentWindow();
+        cout{} << "(pong)" << std::endl;
 
         std::unique_ptr<Conduits::DisposableMessage> reply(new Conduits::DisposableMessage());
         reply->Message_String = "(pong)";
         reply->sender_prepare_for_send();
         msg->set_response(reply.release());
+        msg->set_OK();
+    });
+}
+
+void BaseEnvironment::_beep(Conduits::Raw::IMessage * msg) noexcept
+{
+    this->savvy_try_wrap(msg, [&] {
+        BlackRoot::System::PlayAdHocSound(this->get_ref_dir() / "Data/ping.wav");
+        BlackRoot::System::FlashCurrentWindow();
         msg->set_OK();
     });
 }

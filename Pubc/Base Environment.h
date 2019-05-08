@@ -130,6 +130,7 @@ namespace Base {
             // Relay Util
 
         CON_RMR_DECLARE_FUNC(ping);
+        CON_RMR_DECLARE_FUNC(beep);
     };
 
 }
