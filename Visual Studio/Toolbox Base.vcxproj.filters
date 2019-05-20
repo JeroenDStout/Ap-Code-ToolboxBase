@@ -10,11 +10,11 @@
     <Filter Include="Utility">
       <UniqueIdentifier>{03a51a99-59af-47de-97c9-68f163be14f6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Meta">
-      <UniqueIdentifier>{9c28da7f-c311-4967-8257-a4e1e25782a6}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Sockets">
       <UniqueIdentifier>{2795b0dc-4b94-4a2c-a445-b3dc48d65756}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Version">
+      <UniqueIdentifier>{0616aa1c-9186-4800-967f-d3f2a6b713b1}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -26,9 +26,6 @@
     </ClCompile>
     <ClCompile Include="../Pubc/Interface Environment.cpp">
       <Filter>Environment</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Pubc\Version.cpp">
-      <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="..\Pubc\Entry.cpp">
       <Filter>Core</Filter>
@@ -48,11 +45,11 @@
     <ClCompile Include="..\Pubc\Base Socketman Http.cpp">
       <Filter>Sockets</Filter>
     </ClCompile>
+    <ClCompile Include="..\Pubc\Version.cpp">
+      <Filter>Version</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Pubc\Register.h">
-      <Filter>Core</Filter>
-    </ClInclude>
     <ClInclude Include="../Pubc/Base Environment.h">
       <Filter>Environment</Filter>
     </ClInclude>
@@ -61,9 +58,6 @@
     </ClInclude>
     <ClInclude Include="../Pubc/Interface Environment.h">
       <Filter>Environment</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Pubc\Version.h">
-      <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="..\Pubc\Entry.h">
       <Filter>Core</Filter>
@@ -80,23 +74,34 @@
     <ClInclude Include="..\Pubc\Base Socketman.h">
       <Filter>Sockets</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="..\Meta\generate_meta.txt">
-      <Filter>Meta</Filter>
-    </CustomBuild>
+    <ClInclude Include="..\Pubc\Version.h">
+      <Filter>Version</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Pubc\Register.h">
+      <Filter>Version</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Meta\contributors.json">
-      <Filter>Meta</Filter>
+      <Filter>Version</Filter>
     </None>
     <None Include="..\Meta\libraries.json">
-      <Filter>Meta</Filter>
+      <Filter>Version</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\Meta\licence_name.txt">
-      <Filter>Meta</Filter>
+      <Filter>Version</Filter>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <BRVersionDef Include="..\..\BlackRoot\Meta\.brversion">
+      <Filter>Version</Filter>
+    </BRVersionDef>
+  </ItemGroup>
+  <ItemGroup>
+    <BRMetaDef Include="..\..\BlackRoot\Meta\.brmeta">
+      <Filter>Version</Filter>
+    </BRMetaDef>
   </ItemGroup>
 </Project>

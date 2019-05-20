@@ -8,6 +8,8 @@
 #include "BlackRoot/Pubc/Version Reg.h"
 #include "BlackRoot/Pubc/First.h"
 #include "BlackRoot/Pubc/Threaded IO Stream.h"
+#include "BlackRoot/Pubc/Hash ID.h"
+#include "BlackRoot/Pubc/Hash Name.h"
 #include "BlackRoot/Pubc/Sys Path.h"
 #include "BlackRoot/Pubc/Sys Sound.h"
 #include "BlackRoot/Pubc/Sys Alert.h"
@@ -289,8 +291,8 @@ void BaseEnvironment::savvy_handle_http(const JSON httpRequest, JSON & httpReply
     std::stringstream ss;
     
     const auto & class_name = this->internal_get_rmr_class_name();
-    auto registry  = BlackRoot::Repo::VersionRegistry::GetRegistry();
-    auto main_proj = registry->GetMainProjectVersion();
+    auto registry  = BlackRoot::Repo::VersionRegistry::get_registry();
+    auto main_proj = registry->get_app_project_version();
 
 	ss << "<!doctype html>" << std::endl
 		<< "<html>" << std::endl
@@ -299,13 +301,15 @@ void BaseEnvironment::savvy_handle_http(const JSON httpRequest, JSON & httpReply
 		<< " </head>" << std::endl
 		<< " <body style=\"padding: 1em 2em 2em 2em\">" << std::endl
 		<< "  <h1>" << main_proj.Name << "</h1>" << std::endl
-		<< "  <div style=\"padding-left:.5em\">" << main_proj.Version << "<br/>" << main_proj.BuildTool << "</div>" << std::endl
+		<< "  <div style=\"padding-left:.5em\">" << main_proj.Version << "<br/>"
+	      << BlackRoot::Identify::generate_hash_name_32(uint32(registry->get_full_project_hash())).get() << "<br/>"
+          << main_proj.BuildTool << "</div>" << std::endl
 		<< "  <h1>" << class_name << " (base relay)</h1>" << std::endl
 		<< "  <div style=\"padding-left:.5em\">" << this->html_create_action_relay_string() << "</div>" << std::endl;
 
         // Print contribution and version strings
     std::string version;
-    version = registry->GetVersionString();
+    version = registry->get_version_string();
 
     std::string from = "\n";
     std::string to = "<br/>";
@@ -320,9 +324,12 @@ void BaseEnvironment::savvy_handle_http(const JSON httpRequest, JSON & httpReply
     ss << "  <div style=\"margin-top:1em\"><b>Statically linked</b><div style=\"padding-left:.5em\">";
     
     first.reset();
-    for (auto & elem : BlackRoot::Repo::VersionRegistry::GetRegistry()->GetVersionList()) {
+    for (auto & elem : BlackRoot::Repo::VersionRegistry::get_registry()->get_version_list()) {
+        BlackRoot::Identify::HashSugar128 sugar(elem.VersionHash);
+
         ss << "<div style=\"margin-bottom:0.25em\">";
         ss << elem.Name << " " << elem.Version << " (" << elem.BranchName << ")<br/>";
+	    ss << BlackRoot::Identify::generate_hash_name_32(uint32(elem.VersionHash)).get() << " (" << sugar[1] << ")<br/>";
         ss << elem.Licence << "<br/>";
         ss << elem.BuildTool << "</div>";
     }
@@ -332,7 +339,7 @@ void BaseEnvironment::savvy_handle_http(const JSON httpRequest, JSON & httpReply
     ss << "  <div style=\"margin-top:1em\"><b>This software contains contributions by</b><div style=\"padding-left:.5em;margin-top:0px\">";
     
     first.reset();
-    for (auto & elem : BlackRoot::Repo::VersionRegistry::GetRegistry()->GetFullProjectContributors().Contibutors) {
+    for (auto & elem : BlackRoot::Repo::VersionRegistry::get_registry()->get_full_project_contributors().Contibutors) {
         if (!first) ss << "<br/>";
 	    ss << elem.Name;
     }
@@ -340,7 +347,7 @@ void BaseEnvironment::savvy_handle_http(const JSON httpRequest, JSON & httpReply
     ss << "</div></div>" << std::endl << "  <div style=\"margin-top:1em\"><b>And is built using</b><div style=\"padding-left:.5em;margin-top:0px\">";
 
     first.reset();
-    for (auto & elem : BlackRoot::Repo::VersionRegistry::GetRegistry()->GetFullProjectLibraries().Libraries) {
+    for (auto & elem : BlackRoot::Repo::VersionRegistry::get_registry()->get_full_project_libraries().Libraries) {
         if (!first) ss << "<br/>";
         if (elem.Url.size() > 0) {
 	        ss << "<a href=\"http://" << elem.Url << "\">" << elem.Name << "</a>";
@@ -408,7 +415,7 @@ void BaseEnvironment::_code_credits(Conduits::Raw::IMessage * msg) noexcept
     this->savvy_try_wrap(msg, [&] {
             // Set message to boot string
         std::unique_ptr<Conduits::DisposableMessage> reply(new Conduits::DisposableMessage());
-        reply->Message_String = BlackRoot::Repo::VersionRegistry::GetBootString();
+        reply->Message_String = BlackRoot::Repo::VersionRegistry::get_boot_string();
         reply->sender_prepare_for_send();
         
         msg->set_response(reply.release());

@@ -91,7 +91,7 @@ int Toolbox::Core::DefaultStart(StartupFunction f, int argc, char* argv[])
         
         std::string title;
 
-        const auto & version = BlackRoot::Repo::VersionRegistry::GetMainProjectVersion();
+        const auto & version = BlackRoot::Repo::VersionRegistry::get_app_project_version();
         title = version.Name;
         title += " (";
         title += version.Version;

@@ -307,8 +307,8 @@ void Socketman::internal_async_receive_message(WSConnexionPtr sender, const std:
 
             // Create server properties and send
 		Conduits::Protocol::ServerProperties server_prop;
-		server_prop.Name    = BlackRoot::Repo::VersionRegistry::GetMainProjectVersion().Name;
-		server_prop.Version = BlackRoot::Repo::VersionRegistry::GetMainProjectVersion().Version;
+		server_prop.Name    = BlackRoot::Repo::VersionRegistry::get_app_project_version().Name;
+		server_prop.Version = BlackRoot::Repo::VersionRegistry::get_app_project_version().Version;
 
 		this->internal_async_send_message(sender, Conduits::Protocol::ServerProperties::create_what_ho_response(server_prop));
 
